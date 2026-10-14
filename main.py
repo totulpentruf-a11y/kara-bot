@@ -716,4 +716,4 @@ async def perm_error(interaction: discord.Interaction, error: app_commands.AppCo
     if isinstance(error, app_commands.CheckFailure):
         await interaction.response.send_message("❌ Nu ai gradul necesar pentru a executa această comandă!", ephemeral=True)
 
-bot.run("MTU1OTk1NzYzNzUyNzc2NTA4Mw.G-1GAI.3er3c5WbBun_lZylNGr8a5Re-wWu32OAS3n7W4")
+bot.run("MTU1OTk1NzYzNzUyNzc2NTA4Mw.G-URVV._Wwme6YcJ2hjJ8p9PPr3r6tweBI5UdslvLaYt4")
