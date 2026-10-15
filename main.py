@@ -78,7 +78,6 @@ async def send_log(guild: discord.Guild, channel_name: str, embed: discord.Embed
             pass
 
 def get_kara_ping(guild: discord.Guild) -> str:
-    # Căutare exactă a rolului ┇Kara Hilal sau Kara Hilal
     role = discord.utils.get(guild.roles, name="┇Kara Hilal")
     if not role:
         role = discord.utils.get(guild.roles, name="Kara Hilal")
@@ -86,8 +85,8 @@ def get_kara_ping(guild: discord.Guild) -> str:
         role = discord.utils.get(guild.roles, name="⋮ Kara Hilal")
     
     if role:
-        return role.mention  # Aceasta generează <@&ID> care oferă NOTIFICARE/PING REAL
-    return "@everyone"      # Fallback dacă rolul nu este găsit deloc pe server
+        return role.mention
+    return "@everyone"
 
 def check_super_admin(user: discord.Member) -> bool:
     if user.guild_permissions.administrator:
@@ -139,17 +138,14 @@ def has_hr_perm():
         return any(role in user_roles for role in HR_ROLES)
     return app_commands.check(predicate)
 
-# ==================== COMANDĂ PENTRU REZOLVAREA DUPLICATELOR (!clear_sync) ====================
+# ==================== COMANDĂ DE CURĂȚARE ȘI SINCRONIZARE (!clear_sync) ====================
 @bot.command(name="clear_sync")
 async def clear_sync_cmd(ctx: commands.Context):
     if check_super_admin(ctx.author) or ctx.author.guild_permissions.administrator:
-        # Șterge comenzile specifice de pe server pentru a elimina dublurile
         bot.tree.clear_commands(guild=ctx.guild)
         await bot.tree.sync(guild=ctx.guild)
-        
-        # Sincronizează doar comenzile globale
         synced = await bot.tree.sync()
-        await ctx.send(f"🧹 Am curățat toate comenzile dublate! S-au sincronizat curat `{len(synced)}` comenzi Slash. Te rog dă Restart la Discord (Ctrl+R) pentru a vedea lista curată!")
+        await ctx.send(f"🧹 Am curățat toate comenzile dublate! S-au sincronizat curat `{len(synced)}` comenzi Slash. Te rog dă Restart la Discord (Ctrl+R)!")
     else:
         await ctx.send("❌ Nu ai permisiunea de a folosi comanda de sincronizare!")
 
@@ -279,7 +275,7 @@ class LivratView(discord.ui.View):
             await interaction.response.edit_message(embed=embed, view=self)
         return callback
 
-# ==================== FORMULAR INACTIVITATE CU DM DIRECTȘI EXTRAGERE SIGURĂ ====================
+# ==================== FORMULAR INACTIVITATE ====================
 
 def extract_member_from_embed(guild: discord.Guild, embed: discord.Embed) -> discord.Member:
     for field in embed.fields:
@@ -331,7 +327,7 @@ class InactivitateApprovalView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Aprobă", style=discord.ButtonStyle.success, emoji="✅", custom_id="inact_aprob_btn_v3")
+    @discord.ui.button(label="Aprobă", style=discord.ButtonStyle.success, emoji="✅", custom_id="inact_aprob_btn_v4")
     async def btn_aprob(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
         if not (check_super_admin(interaction.user) or any(r in user_roles for r in MAFIA_ROLES) or interaction.user.guild_permissions.administrator):
@@ -363,7 +359,7 @@ class InactivitateApprovalView(discord.ui.View):
         else:
             await interaction.response.send_message("✅ Cererea a fost aprobată! (Atenție: Membrul are DM-urile închise și nu a putut fi notificat în privat).", ephemeral=True)
 
-    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, emoji="❌", custom_id="inact_resping_btn_v3")
+    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, emoji="❌", custom_id="inact_resping_btn_v4")
     async def btn_respinge(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
         if not (check_super_admin(interaction.user) or any(r in user_roles for r in MAFIA_ROLES) or interaction.user.guild_permissions.administrator):
@@ -528,13 +524,14 @@ class BuletinModal(discord.ui.Modal, title="🪪 Registru Buletin IC"):
         if channel:
             await channel.send(embed=embed)
 
-# ==================== COMENZI PRINCIPALE ====================
+# ==================== COMENZI PRINCIPALE CU PING DIRECT ÎN CANAL ====================
 
 @bot.tree.command(name="statie", description="📻 Anunță frecvența și parola pentru stație pe canalul dedicat")
 @has_super_admin_perm()
 @app_commands.describe(frecventa="Frecvența stației (ex: 100.5)", parola="Parola de la stație", detalii="Detalii suplimentare (opțional)")
 async def statie(interaction: discord.Interaction, frecventa: str, parola: str, detalii: str = "Păstrați stația curată în timpul acțiunilor!"):
-    target_channel = discord.utils.get(interaction.guild.text_channels, name="frecventa-statie")
+    await interaction.response.send_message("✅ Se trimite anunțul de stație...", ephemeral=True)
+    target_channel = discord.utils.get(interaction.guild.text_channels, name="frecventa-statie") or interaction.channel
     ping = get_kara_ping(interaction.guild)
     
     embed = discord.Embed(
@@ -549,25 +546,21 @@ async def statie(interaction: discord.Interaction, frecventa: str, parola: str, 
     embed.add_field(name="👑 Anunțat de", value=interaction.user.mention, inline=False)
     embed.set_footer(text="Kara Hilal Radio Communication System • Confidențial")
 
-    if target_channel:
-        await target_channel.send(content=f"{ping} 🌙 **FRECVENȚĂ STAȚIE ACTUALIZATĂ!**", embed=embed)
-        await interaction.response.send_message(f"✅ Frecvența și parola au fost postate pe canalul {target_channel.mention}!", ephemeral=True)
-    else:
-        await interaction.channel.send(content=f"{ping} 🌙 **FRECVENȚĂ STAȚIE ACTUALIZATĂ!**", embed=embed)
-        await interaction.response.send_message("⚠️ Canalul `frecventa-statie` nu a fost găsit, am postat pe canalul curent!", ephemeral=True)
+    await target_channel.send(content=f"{ping} 🌙 **FRECVENȚĂ STAȚIE ACTUALIZATĂ!**", embed=embed)
 
 
 @bot.tree.command(name="backup", description="🚨 Trimite un semnal de alarmă de urgență pentru toți membrii mafiei!")
 @has_mafia_perm()
 @app_commands.describe(locatie="Locația exactă", detalii="Detalii confruntare")
 async def backup(interaction: discord.Interaction, locatie: str, detalii: str = "Fără detalii"):
+    await interaction.response.send_message("✅ Se trimite semnalul de backup...", ephemeral=True)
     ping = get_kara_ping(interaction.guild)
     embed = discord.Embed(title="🚨 ALERTĂ MAXIMĂ KH — BACKUP SOLICITAT! 🚨", description="**Toți membrii conectați să intervină imediat!**", color=discord.Color.blue(), timestamp=datetime.datetime.now())
     embed.add_field(name="📍 Locație", value=locatie, inline=False)
     embed.add_field(name="📝 Detalii", value=detalii, inline=False)
     embed.add_field(name="👤 Solicitat de", value=interaction.user.mention, inline=True)
     embed.set_footer(text="Apasă F8 și conectează-te pe FiveM!")
-    await interaction.response.send_message(content=f"{ping} 🌙 **ÎNTĂRIRI URGENTE!**", embed=embed)
+    await interaction.channel.send(content=f"{ping} 🌙 **ÎNTĂRIRI URGENTE!**", embed=embed)
 
 
 @bot.tree.command(name="seif_deposit", description="📦 Înregistrează o depunere în seiful Kara Hilal")
@@ -631,10 +624,11 @@ async def misiune_set(interaction: discord.Interaction, titlu: str, descriere: s
     global misiune_curenta
     misiune_curenta = {"titlu": titlu, "descriere": descriere, "recompensa": recompensa}
     
+    await interaction.response.send_message("✅ Se fixează misiunea...", ephemeral=True)
     ping = get_kara_ping(interaction.guild)
     embed = discord.Embed(title=f"🎯 MISIUNE NOUĂ STABILITĂ: {titlu}", description=descriere, color=KH_BLUE, timestamp=datetime.datetime.now())
     embed.add_field(name="🎁 Recompensă / Bonus", value=recompensa, inline=False)
-    await interaction.response.send_message(content=f"{ping} 🌙 **MISIUNE NOUĂ ACTIVATĂ!**", embed=embed)
+    await interaction.channel.send(content=f"{ping} 🌙 **MISIUNE NOUĂ ACTIVATĂ!**", embed=embed)
 
 
 @bot.tree.command(name="misiune_view", description="🎯 Vizualizează misiunea săptămânală activă")
@@ -662,6 +656,7 @@ async def trimite_buletin(interaction: discord.Interaction, poza_buletin: discor
 @has_mafia_perm()
 @app_commands.describe(titlu="Titlu", ora_data="Data & Ora", descriere="Instrucțiuni")
 async def creeaza_activitate(interaction: discord.Interaction, titlu: str, ora_data: str, descriere: str):
+    await interaction.response.send_message("✅ Se generează activitatea...", ephemeral=True)
     ping = get_kara_ping(interaction.guild)
     embed = discord.Embed(title=f"⚡ ACTIVITATE MAFIE: {titlu}", description=descriere, color=KH_BLUE)
     embed.add_field(name="🕒 Data & Ora", value=ora_data, inline=False)
@@ -671,7 +666,7 @@ async def creeaza_activitate(interaction: discord.Interaction, titlu: str, ora_d
     embed.add_field(name="⏳ Întârzie (0)", value="*Niciunul*", inline=True)
 
     view = ActivityView(titlu_activitate=titlu, organizator=interaction.user)
-    await interaction.response.send_message(content=f"{ping} 🌙 **ACTIVITATE NOUĂ KH!**", embed=embed, view=view)
+    await interaction.channel.send(content=f"{ping} 🌙 **ACTIVITATE NOUĂ KH!**", embed=embed, view=view)
 
 
 @bot.tree.command(name="agenda_add", description="📞 Adaugă un contact RP în agendă")
@@ -753,6 +748,7 @@ async def livrat(interaction: discord.Interaction, zona: str, drog: str, cantita
         await interaction.response.send_message("❌ Trebuie să introduci cel puțin o persoană!", ephemeral=True)
         return
 
+    await interaction.response.send_message("✅ Se trimite comanda specială...", ephemeral=True)
     view = LivratView(pers_list, interaction.user)
     
     embed = discord.Embed(
@@ -771,13 +767,13 @@ async def livrat(interaction: discord.Interaction, zona: str, drog: str, cantita
 
     ping = get_kara_ping(interaction.guild)
     await interaction.channel.send(content=f"{ping} 🌙 **COMANDĂ SPECIALĂ NOUĂ!**", embed=embed, view=view)
-    await interaction.response.send_message("✅ Comanda specială a fost înregistrată cu succes!", ephemeral=True)
 
 
 @bot.tree.command(name="razie", description="🚨 Anunță o razie Cayo în desfășurare")
 @has_razie_perm()
 @app_commands.describe(frecventa="Frecvența pe care se ține razia (ex: 155.5)")
 async def razie(interaction: discord.Interaction, frecventa: str):
+    await interaction.response.send_message("✅ Anunțul de razie se trimite...", ephemeral=True)
     ping = get_kara_ping(interaction.guild)
     embed = discord.Embed(
         title="🚨 RAZIE CAYO ÎN DESFĂȘURARE 🚨",
@@ -789,7 +785,6 @@ async def razie(interaction: discord.Interaction, frecventa: str):
     embed.set_footer(text="Kara Hilal Operations • Toată lumea pe poziții!")
     
     await interaction.channel.send(content=f"{ping} 🌙 **RAZIE NOUĂ ACTIVATĂ!**", embed=embed)
-    await interaction.response.send_message("✅ Anunțul de razie a fost trimis cu succes!", ephemeral=True)
 
 
 # ==================== SPĂLĂTORIE / PONTAJ ====================
