@@ -33,7 +33,18 @@ MAFIA_ROLES = [
     "Lider", 
     "Co-Lider", 
     "Capo", 
-    "Admin Mafie", 
+    "Admin Mafie",
+    "┇SULTAN",
+    "┇GRAND VIZIR",
+    "┇VIZIR",
+    "."
+]
+
+RAZIE_ROLES = [
+    "┇SULTAN",
+    "┇GRAND VIZIR",
+    "┇VIZIR",
+    "Razie",
     "."
 ]
 
@@ -45,13 +56,11 @@ WASH_ADMIN_ROLES = [
     "."
 ]
 
-# Rolul exclusiv pentru Director (reset pontaj)
 DIRECTOR_WASH_ROLE = [
     "Director Kara",
     "."
 ]
 
-# Rolul exclusiv pentru /pontaje_active
 HR_ROLES = [
     "Resurse Umane",
     "."
@@ -73,6 +82,10 @@ async def send_log(guild: discord.Guild, channel_name: str, embed: discord.Embed
         except discord.Forbidden:
             pass
 
+def get_kara_ping(guild: discord.Guild) -> str:
+    role = discord.utils.get(guild.roles, name="┇Kara Hilal")
+    return role.mention if role else "@┇Kara Hilal"
+
 def has_super_admin_perm():
     def predicate(interaction: discord.Interaction) -> bool:
         if interaction.user.guild_permissions.administrator:
@@ -87,6 +100,14 @@ def has_mafia_perm():
             return True
         user_roles = [role.name for role in interaction.user.roles]
         return any(role in user_roles for role in MAFIA_ROLES)
+    return app_commands.check(predicate)
+
+def has_razie_perm():
+    def predicate(interaction: discord.Interaction) -> bool:
+        if interaction.user.guild_permissions.administrator:
+            return True
+        user_roles = [role.name for role in interaction.user.roles]
+        return any(role in user_roles for role in RAZIE_ROLES) or any(role in user_roles for role in MAFIA_ROLES)
     return app_commands.check(predicate)
 
 def has_wash_perm():
@@ -116,7 +137,6 @@ def has_hr_perm():
 # ==================== BAZĂ DE DATE REȚETE COMPLETĂ ====================
 
 RECIPES = {
-    # --- DROGURI ---
     "cocaina": {"nume": "🍃 Cocaină (4 plicuri)", "output_qty": 4, "ingredients": {"frunze": 12, "plic_gol": 4, "amoniac": 1, "sodiu": 1}},
     "crack": {"nume": "💨 Cocaine Crack (2 plicuri)", "output_qty": 2, "ingredients": {"plic_cocaina": 1, "apa": 2, "bricheta": 1}},
     "meth": {"nume": "💉 Seringă Meth (3 bucăți)", "output_qty": 3, "ingredients": {"amoniac": 1, "detergent": 2, "absint": 4, "seringa_gola": 3}},
@@ -217,7 +237,40 @@ def format_seconds(seconds: float) -> str:
     secs = total_sec % 60
     return f"{hours}h {minutes}m {secs}s"
 
-# ==================== FORMULAR INACTIVITATE ====================
+# ==================== INTERFAȚĂ LIVRARE / COMANDĂ SPECIALĂ ====================
+
+class LivratView(discord.ui.View):
+    def __init__(self, persoane_list: list, organizator: discord.Member):
+        super().__init__(timeout=None)
+        self.organizator = organizator
+        self.persoane_status = {p.strip(): False for p in persoane_list if p.strip()}
+        self.update_buttons()
+
+    def update_buttons(self):
+        self.clear_items()
+        for pers, status in self.persoane_status.items():
+            emoji = "✅" if status else "❌"
+            style = discord.ButtonStyle.success if status else discord.ButtonStyle.secondary
+            button = discord.ui.Button(label=f"{pers}", emoji=emoji, style=style, custom_id=f"livrat_{pers}")
+            button.callback = self.create_callback(pers)
+            self.add_item(button)
+
+    def create_callback(self, pers):
+        async def callback(interaction: discord.Interaction):
+            self.persoane_status[pers] = not self.persoane_status[pers]
+            self.update_buttons()
+            
+            embed = interaction.message.embeds[0]
+            status_text = ""
+            for p, st in self.persoane_status.items():
+                icon = "✅" if st else "❌"
+                status_text += f"{icon} **{p}**\n"
+            
+            embed.set_field_at(3, name="👥 Persoane & Status Bani", value=status_text, inline=False)
+            await interaction.response.edit_message(embed=embed, view=self)
+        return callback
+
+# ==================== FORMULAR INACTIVITATE (CORECTAT) ====================
 
 class InactivitateApprovalView(discord.ui.View):
     def __init__(self, applicant: discord.Member):
@@ -420,6 +473,7 @@ async def statie(interaction: discord.Interaction, frecventa: str, parola: str, 
             target_channel = channel
             break
 
+    ping = get_kara_ping(interaction.guild)
     embed = discord.Embed(
         title="📻 FRECVENȚĂ STAȚIE ACTIVĂ — KARA HILAL",
         description="**Conducerea a stabilit o nouă frecvență de comunicare! Conectați-vă imediat.**",
@@ -433,10 +487,10 @@ async def statie(interaction: discord.Interaction, frecventa: str, parola: str, 
     embed.set_footer(text="Kara Hilal Radio Communication System • Confidențial")
 
     if target_channel:
-        await target_channel.send(content="@everyone 🌙 **FRECVENȚĂ STAȚIE ACTUALIZATĂ!**", embed=embed)
+        await target_channel.send(content=f"{ping} 🌙 **FRECVENȚĂ STAȚIE ACTUALIZATĂ!**", embed=embed)
         await interaction.response.send_message(f"✅ Frecvența și parola au fost postate pe canalul {target_channel.mention}!", ephemeral=True)
     else:
-        await interaction.channel.send(content="@everyone 🌙 **FRECVENȚĂ STAȚIE ACTUALIZATĂ!**", embed=embed)
+        await interaction.channel.send(content=f"{ping} 🌙 **FRECVENȚĂ STAȚIE ACTUALIZATĂ!**", embed=embed)
         await interaction.response.send_message("⚠️ Canalul `frecventa-statie` nu a fost găsit cu exactitate, am postat pe canalul curent!", ephemeral=True)
 
 
@@ -444,13 +498,14 @@ async def statie(interaction: discord.Interaction, frecventa: str, parola: str, 
 @has_mafia_perm()
 @app_commands.describe(locatie="Locația exactă", detalii="Detalii confruntare")
 async def backup(interaction: discord.Interaction, locatie: str, detalii: str = "Fără detalii"):
+    ping = get_kara_ping(interaction.guild)
     embed = discord.Embed(title="🚨 ALERTĂ MAXIMĂ KH — BACKUP SOLICITAT! 🚨", description="**Toți membrii conectați să intervină imediat!**", color=discord.Color.blue(), timestamp=datetime.datetime.now())
     embed.add_field(name="📍 Locație", value=locatie, inline=False)
     embed.add_field(name="📝 Detalii", value=detalii, inline=False)
     embed.add_field(name="👤 Solicitat de", value=interaction.user.mention, inline=True)
     embed.set_footer(text="Apasă F8 și conectează-te pe FiveM!")
 
-    await interaction.response.send_message(content="@everyone 🌙 **ÎNTĂRIRI URGENTE!**", embed=embed)
+    await interaction.response.send_message(content=f"{ping} 🌙 **ÎNTĂRIRI URGENTE!**", embed=embed)
 
 
 @bot.tree.command(name="seif_deposit", description="📦 Înregistrează o depunere în seiful Kara Hilal")
@@ -501,9 +556,10 @@ async def reminder(interaction: discord.Interaction, minute_asteptare: int, mesa
     await interaction.response.send_message(f"⏰ Reminder programat! Va fi trimis peste `{minute_asteptare}` minute.", ephemeral=True)
     await asyncio.sleep(minute_asteptare * 60)
     
+    ping = get_kara_ping(interaction.guild)
     embed = discord.Embed(title="🔔 REMINDER ACTIVITATE — KARA HILAL", description=f"**Atenție!** În curând începe o activitate importantă!\n\n**Detalii:** {mesaj}", color=KH_BLUE, timestamp=datetime.datetime.now())
     embed.set_footer(text="Intrați pe FiveM și pregătiți-vă de acțiune!")
-    await interaction.channel.send(content="@everyone 🌙 **REMINDER ACTIVITATE!**", embed=embed)
+    await interaction.channel.send(content=f"{ping} 🌙 **REMINDER ACTIVITATE!**", embed=embed)
 
 
 @bot.tree.command(name="misiune_set", description="🎯 [LIDERI / .] Setează o misiune săptămânală")
@@ -513,9 +569,10 @@ async def misiune_set(interaction: discord.Interaction, titlu: str, descriere: s
     global misiune_curenta
     misiune_curenta = {"titlu": titlu, "descriere": descriere, "recompensa": recompensa}
     
+    ping = get_kara_ping(interaction.guild)
     embed = discord.Embed(title=f"🎯 MISIUNE NOUĂ STABILITĂ: {titlu}", description=descriere, color=KH_BLUE, timestamp=datetime.datetime.now())
     embed.add_field(name="🎁 Recompensă / Bonus", value=recompensa, inline=False)
-    await interaction.response.send_message(content="@everyone 🌙 **MISIUNE NOUĂ ACTIVATĂ!**", embed=embed)
+    await interaction.response.send_message(content=f"{ping} 🌙 **MISIUNE NOUĂ ACTIVATĂ!**", embed=embed)
 
 
 @bot.tree.command(name="misiune_view", description="🎯 Vizualizează misiunea săptămânală activă")
@@ -543,6 +600,7 @@ async def trimite_buletin(interaction: discord.Interaction, poza_buletin: discor
 @has_mafia_perm()
 @app_commands.describe(titlu="Titlu", ora_data="Data & Ora", descriere="Instrucțiuni")
 async def creeaza_activitate(interaction: discord.Interaction, titlu: str, ora_data: str, descriere: str):
+    ping = get_kara_ping(interaction.guild)
     embed = discord.Embed(title=f"⚡ ACTIVITATE MAFIE: {titlu}", description=descriere, color=KH_BLUE)
     embed.add_field(name="🕒 Data & Ora", value=ora_data, inline=False)
     embed.add_field(name="👑 Organizator", value=interaction.user.mention, inline=False)
@@ -551,7 +609,7 @@ async def creeaza_activitate(interaction: discord.Interaction, titlu: str, ora_d
     embed.add_field(name="⏳ Întârzie (0)", value="*Niciunul*", inline=True)
 
     view = ActivityView(titlu_activitate=titlu, organizator=interaction.user)
-    await interaction.response.send_message(content="@everyone 🌙 **ACTIVITATE NOUĂ KH!**", embed=embed, view=view)
+    await interaction.response.send_message(content=f"{ping} 🌙 **ACTIVITATE NOUĂ KH!**", embed=embed, view=view)
 
 
 @bot.tree.command(name="agenda_add", description="📞 Adaugă un contact RP în agendă")
@@ -559,7 +617,7 @@ async def creeaza_activitate(interaction: discord.Interaction, titlu: str, ora_d
 @app_commands.describe(nume_rp="Nume IC", functie_factiune="Rol / Facțiune", numar_telefon="Număr IC")
 async def agenda_add(interaction: discord.Interaction, nume_rp: str, functie_factiune: str, numar_telefon: str):
     agenda_telefonica.append({"nume": nume_rp, "functie": functie_factiune, "telefon": numar_telefon})
-    embed = discord.Embed(title="📞 CONTACT ADĂUGAT ÎN AGENDĂ", color=KH_BLUE)
+    embed = discord.Embed(title="📞 CONTACT ADAUGAT ÎN AGENDĂ", color=KH_BLUE)
     embed.add_field(name="👤 Nume IC", value=nume_rp, inline=True)
     embed.add_field(name="💼 Rol", value=functie_factiune, inline=True)
     embed.add_field(name="📱 Telefon", value=f"`{numar_telefon}`", inline=False)
@@ -580,7 +638,99 @@ async def agenda_search(interaction: discord.Interaction, cautare: str):
     embed.add_field(name="Contacte Găsite", value=text_rezultate, inline=False)
     await interaction.response.send_message(embed=embed)
 
-# ==================== COMENZI PONTAJ & DEPUNERI SPĂLĂTORIE (Kara Wash) ====================
+
+@bot.tree.command(name="agenda_delete", description="📞 Șterge un contact din agenda telefonică RP")
+@has_mafia_perm()
+@app_commands.describe(cautare="Numele sau numărul de telefon al contactului de șters")
+async def agenda_delete(interaction: discord.Interaction, cautare: str):
+    global agenda_telefonica
+    remaining = []
+    deleted = []
+    for c in agenda_telefonica:
+        if cautare.lower() in c['nume'].lower() or cautare.lower() in c['telefon'].lower():
+            deleted.append(c)
+        else:
+            remaining.append(c)
+    
+    agenda_telefonica = remaining
+    
+    if not deleted:
+        await interaction.response.send_message(f"❌ Nu am găsit niciun contact care să corespundă căutării: `{cautare}`", ephemeral=True)
+        return
+
+    embed = discord.Embed(title="📞 CONTACT(E) ȘTERSE DIN AGENDĂ", color=discord.Color.red())
+    text_deleted = "".join([f"👤 **{c['nume']}** ({c['functie']}) — 📱 `{c['telefon']}`\n" for c in deleted])
+    embed.add_field(name=f"Contacte Șterse ({len(deleted)})", value=text_deleted, inline=False)
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+@bot.tree.command(name="livrat", description="📦 Înregistrează o comandă specială / livrare droguri și status bani")
+@has_mafia_perm()
+@app_commands.describe(
+    zona="Zona de livrare",
+    drog="Tipul de drog",
+    cantitate="Cantitatea (ex: 50 bucăți / plicuri)",
+    bani="Banii necesari (ex: $150,000)",
+    persoane="Persoanele implicate (separați prin virgulă, ex: Nume1, Nume2)"
+)
+@app_commands.choices(zona=[
+    app_commands.Choice(name="Sandy Shores", value="Sandy Shores"),
+    app_commands.Choice(name="Paleto Bay", value="Paleto"),
+    app_commands.Choice(name="Vespucci", value="Vespucci"),
+    app_commands.Choice(name="Groove Street", value="Groove"),
+    app_commands.Choice(name="Dusty", value="Dusty"),
+    app_commands.Choice(name="Mirror Park", value="Mirror"),
+    app_commands.Choice(name="Burro Heights", value="Burro")
+], drog=[
+    app_commands.Choice(name="Cocaină", value="Cocaină"),
+    app_commands.Choice(name="Crack", value="Crack")
+])
+async def livrat(interaction: discord.Interaction, zona: str, drog: str, cantitate: str, bani: str, persoane: str):
+    pers_list = [p.strip() for p in persoane.split(",") if p.strip()]
+    if not pers_list:
+        await interaction.response.send_message("❌ Trebuie să introduci cel puțin o persoană!", ephemeral=True)
+        return
+
+    view = LivratView(pers_list, interaction.user)
+    
+    embed = discord.Embed(
+        title="📦 COMANDĂ SPECIALĂ / LIVRARE",
+        description=f"**Organizator:** {interaction.user.mention}",
+        color=KH_BLUE,
+        timestamp=datetime.datetime.now()
+    )
+    embed.add_field(name="📍 Zonă", value=zona, inline=True)
+    embed.add_field(name="💊 Drog & Cantitate", value=f"{drog} — `{cantitate}`", inline=True)
+    embed.add_field(name="💵 Bani Necesar", value=f"`{bani}`", inline=False)
+    
+    status_init = "".join([f"❌ **{p}**\n" for p in pers_list])
+    embed.add_field(name="👥 Persoane & Status Bani", value=status_init, inline=False)
+    embed.set_footer(text="Apasă pe butoanele de mai jos pentru a marca bifa când persoana predă banii murdari.")
+
+    ping = get_kara_ping(interaction.guild)
+    await interaction.channel.send(content=f"{ping} 🌙 **COMANDĂ SPECIALĂ NOUĂ!**", embed=embed, view=view)
+    await interaction.response.send_message("✅ Comanda specială a fost înregistrată cu succes!", ephemeral=True)
+
+
+@bot.tree.command(name="razie", description="🚨 [SULTAN / VIZIR / RAZIE] Anunță o razie Cayo în desfășurare")
+@has_razie_perm()
+@app_commands.describe(frecventa="Frecvența pe care se ține razia (ex: 155.5)")
+async def razie(interaction: discord.Interaction, frecventa: str):
+    ping = get_kara_ping(interaction.guild)
+    embed = discord.Embed(
+        title="🚨 RAZIE CAYO ÎN DESFĂȘURARE 🚨",
+        description=f"**Este în desfășurare o razie Cayo!**\n\n📡 **Frecvență:** `{frecventa}`",
+        color=discord.Color.red(),
+        timestamp=datetime.datetime.now()
+    )
+    embed.add_field(name="👑 Anunțat de", value=interaction.user.mention, inline=False)
+    embed.set_footer(text="Kara Hilal Operations • Toată lumea pe poziții!")
+    
+    await interaction.channel.send(content=f"{ping} 🌙 **RAZIE NOUĂ ACTIVATĂ!**", embed=embed)
+    await interaction.response.send_message("✅ Anunțul de razie a fost trimis cu succes!", ephemeral=True)
+
+
+# ==================== SPĂLĂTORIE / PONTAJ ====================
 
 @bot.tree.command(name="spalatorie_depunere", description="🧼 Înregistrează încasări pentru Kara Wash")
 @has_wash_perm()
@@ -703,6 +853,7 @@ async def reset_pontaj(interaction: discord.Interaction, membru: discord.Member 
 @calculeaza.error
 @agenda_add.error
 @agenda_search.error
+@agenda_delete.error
 @backup.error
 @seif_deposit.error
 @reset_pontaj.error
@@ -712,6 +863,8 @@ async def reset_pontaj(interaction: discord.Interaction, membru: discord.Member 
 @pontaje_active.error
 @top_pontaj.error
 @profil_pontaj.error
+@livrat.error
+@razie.error
 async def perm_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
     if isinstance(error, app_commands.CheckFailure):
         await interaction.response.send_message("❌ Nu ai gradul necesar pentru a executa această comandă!", ephemeral=True)
