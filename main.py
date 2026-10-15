@@ -16,7 +16,7 @@ class KaraHilalBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
-        print("Botul a pornit. Folosește comanda '!sync' pe server pentru a actualiza instant comenzile slash!")
+        print("Botul a pornit. Folosește comanda '!clear_sync' pe server pentru a curăța comenzile dublate!")
 
 bot = KaraHilalBot()
 
@@ -78,8 +78,16 @@ async def send_log(guild: discord.Guild, channel_name: str, embed: discord.Embed
             pass
 
 def get_kara_ping(guild: discord.Guild) -> str:
+    # Căutare exactă a rolului ┇Kara Hilal sau Kara Hilal
     role = discord.utils.get(guild.roles, name="┇Kara Hilal")
-    return role.mention if role else "@┇Kara Hilal"
+    if not role:
+        role = discord.utils.get(guild.roles, name="Kara Hilal")
+    if not role:
+        role = discord.utils.get(guild.roles, name="⋮ Kara Hilal")
+    
+    if role:
+        return role.mention  # Aceasta generează <@&ID> care oferă NOTIFICARE/PING REAL
+    return "@everyone"      # Fallback dacă rolul nu este găsit deloc pe server
 
 def check_super_admin(user: discord.Member) -> bool:
     if user.guild_permissions.administrator:
@@ -131,14 +139,17 @@ def has_hr_perm():
         return any(role in user_roles for role in HR_ROLES)
     return app_commands.check(predicate)
 
-# ==================== COMANDĂ DE SINCRONIZARE (!sync) ====================
-@bot.command(name="sync")
-async def sync_guild(ctx: commands.Context):
+# ==================== COMANDĂ PENTRU REZOLVAREA DUPLICATELOR (!clear_sync) ====================
+@bot.command(name="clear_sync")
+async def clear_sync_cmd(ctx: commands.Context):
     if check_super_admin(ctx.author) or ctx.author.guild_permissions.administrator:
-        synced = await bot.tree.sync(guild=ctx.guild)
-        bot.tree.copy_global_to(guild=ctx.guild)
+        # Șterge comenzile specifice de pe server pentru a elimina dublurile
+        bot.tree.clear_commands(guild=ctx.guild)
         await bot.tree.sync(guild=ctx.guild)
-        await ctx.send(f"✅ S-au sincronizat instant `{len(synced)}` comenzi Slash pe acest server!")
+        
+        # Sincronizează doar comenzile globale
+        synced = await bot.tree.sync()
+        await ctx.send(f"🧹 Am curățat toate comenzile dublate! S-au sincronizat curat `{len(synced)}` comenzi Slash. Te rog dă Restart la Discord (Ctrl+R) pentru a vedea lista curată!")
     else:
         await ctx.send("❌ Nu ai permisiunea de a folosi comanda de sincronizare!")
 
@@ -268,7 +279,7 @@ class LivratView(discord.ui.View):
             await interaction.response.edit_message(embed=embed, view=self)
         return callback
 
-# ==================== FORMULAR INACTIVITATE CU DM DIRECT ȘI EXTRAGERE SIGURĂ ====================
+# ==================== FORMULAR INACTIVITATE CU DM DIRECTȘI EXTRAGERE SIGURĂ ====================
 
 def extract_member_from_embed(guild: discord.Guild, embed: discord.Embed) -> discord.Member:
     for field in embed.fields:
@@ -320,7 +331,7 @@ class InactivitateApprovalView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Aprobă", style=discord.ButtonStyle.success, emoji="✅", custom_id="inact_aprob_btn_v2")
+    @discord.ui.button(label="Aprobă", style=discord.ButtonStyle.success, emoji="✅", custom_id="inact_aprob_btn_v3")
     async def btn_aprob(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
         if not (check_super_admin(interaction.user) or any(r in user_roles for r in MAFIA_ROLES) or interaction.user.guild_permissions.administrator):
@@ -352,7 +363,7 @@ class InactivitateApprovalView(discord.ui.View):
         else:
             await interaction.response.send_message("✅ Cererea a fost aprobată! (Atenție: Membrul are DM-urile închise și nu a putut fi notificat în privat).", ephemeral=True)
 
-    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, emoji="❌", custom_id="inact_resping_btn_v2")
+    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, emoji="❌", custom_id="inact_resping_btn_v3")
     async def btn_respinge(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
         if not (check_super_admin(interaction.user) or any(r in user_roles for r in MAFIA_ROLES) or interaction.user.guild_permissions.administrator):
@@ -517,7 +528,7 @@ class BuletinModal(discord.ui.Modal, title="🪪 Registru Buletin IC"):
         if channel:
             await channel.send(embed=embed)
 
-# ==================== COMENZI PRINCIPALE (CU @┇Kara Hilal PESTE TOT) ====================
+# ==================== COMENZI PRINCIPALE ====================
 
 @bot.tree.command(name="statie", description="📻 Anunță frecvența și parola pentru stație pe canalul dedicat")
 @has_super_admin_perm()
