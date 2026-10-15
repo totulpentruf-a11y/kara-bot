@@ -56,11 +56,13 @@ RAZIE_ROLES = [
     "Razie"
 ]
 
+# Adăugat și "KARA WASH" explicit în lista de permisiuni pentru spălătorie
 WASH_ADMIN_ROLES = [
     "Director Kara", 
     "Kara", 
     "Angajat Kara Wash", 
-    "Kara Wash"
+    "Kara Wash",
+    "KARA WASH"
 ]
 
 DIRECTOR_WASH_ROLE = [
@@ -345,7 +347,7 @@ class InactivitateApprovalView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Aprobă", style=discord.ButtonStyle.success, emoji="✅", custom_id="inact_aprob_btn_v6")
+    @discord.ui.button(label="Aprobă", style=discord.ButtonStyle.success, emoji="✅", custom_id="inact_aprob_btn_v7")
     async def btn_aprob(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
         if not (check_super_admin(interaction.user) or any(r in user_roles for r in MOD_ROLES) or interaction.user.guild_permissions.administrator):
@@ -377,7 +379,7 @@ class InactivitateApprovalView(discord.ui.View):
         else:
             await interaction.response.send_message("✅ Cererea a fost aprobată! (Atenție: Membrul are DM-urile închise și nu a putut fi notificat în privat).", ephemeral=True)
 
-    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, emoji="❌", custom_id="inact_resping_btn_v6")
+    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, emoji="❌", custom_id="inact_resping_btn_v7")
     async def btn_respinge(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
         if not (check_super_admin(interaction.user) or any(r in user_roles for r in MOD_ROLES) or interaction.user.guild_permissions.administrator):
@@ -787,7 +789,7 @@ async def livrat(interaction: discord.Interaction, zona: str, drog: str, cantita
     await interaction.channel.send(content=f"{ping} 🌙 **COMANDĂ SPECIALĂ NOUĂ!**", embed=embed, view=view)
 
 
-@bot.tree.command(name="razie", description="🚨 Anunță o razie Cayo în desfășurari")
+@bot.tree.command(name="razie", description="🚨 Anunță o razie Cayo în desfășurare")
 @has_razie_perm()
 @app_commands.describe(frecventa="Frecvența pe care se ține razia (ex: 155.5)")
 async def razie(interaction: discord.Interaction, frecventa: str):
