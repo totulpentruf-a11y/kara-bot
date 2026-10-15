@@ -482,7 +482,7 @@ class BuletinModal(discord.ui.Modal, title="🪪 Registru Buletin IC"):
 
 # ==================== COMENZI PRINCIPALE ====================
 
-@bot.tree.command(name="statie", description="📻 [EXCLUSIV GRADUL .] Anunță frecvența și parola pentru stație pe canalul dedicat")
+@bot.tree.command(name="statie", description="📻 Anunță frecvența și parola pentru stație pe canalul dedicat")
 @has_super_admin_perm()
 @app_commands.describe(frecventa="Frecvența stației (ex: 100.5)", parola="Parola de la stație", detalii="Detalii suplimentare (opțional)")
 async def statie(interaction: discord.Interaction, frecventa: str, parola: str, detalii: str = "Păstrați stația curată în timpul acțiunilor!"):
