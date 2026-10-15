@@ -36,34 +36,29 @@ MAFIA_ROLES = [
     "Admin Mafie",
     "┇SULTAN",
     "┇GRAND VIZIR",
-    "┇VIZIR",
-    "."
+    "┇VIZIR"
 ]
 
 RAZIE_ROLES = [
     "┇SULTAN",
     "┇GRAND VIZIR",
     "┇VIZIR",
-    "Razie",
-    "."
+    "Razie"
 ]
 
 WASH_ADMIN_ROLES = [
     "Director Kara", 
     "Kara", 
     "Angajat Kara Wash", 
-    "Kara Wash", 
-    "."
+    "Kara Wash"
 ]
 
 DIRECTOR_WASH_ROLE = [
-    "Director Kara",
-    "."
+    "Director Kara"
 ]
 
 HR_ROLES = [
-    "Resurse Umane",
-    "."
+    "Resurse Umane"
 ]
 
 # ==================== CANALE DE LOGURI ====================
@@ -86,17 +81,19 @@ def get_kara_ping(guild: discord.Guild) -> str:
     role = discord.utils.get(guild.roles, name="┇Kara Hilal")
     return role.mention if role else "@┇Kara Hilal"
 
+def check_super_admin(user: discord.Member) -> bool:
+    if user.guild_permissions.administrator:
+        return True
+    return any(role.name == SUPER_ADMIN_ROLE for role in user.roles)
+
 def has_super_admin_perm():
     def predicate(interaction: discord.Interaction) -> bool:
-        if interaction.user.guild_permissions.administrator:
-            return True
-        user_roles = [role.name for role in interaction.user.roles]
-        return SUPER_ADMIN_ROLE in user_roles
+        return check_super_admin(interaction.user)
     return app_commands.check(predicate)
 
 def has_mafia_perm():
     def predicate(interaction: discord.Interaction) -> bool:
-        if interaction.user.guild_permissions.administrator:
+        if check_super_admin(interaction.user):
             return True
         user_roles = [role.name for role in interaction.user.roles]
         return any(role in user_roles for role in MAFIA_ROLES)
@@ -104,7 +101,7 @@ def has_mafia_perm():
 
 def has_razie_perm():
     def predicate(interaction: discord.Interaction) -> bool:
-        if interaction.user.guild_permissions.administrator:
+        if check_super_admin(interaction.user):
             return True
         user_roles = [role.name for role in interaction.user.roles]
         return any(role in user_roles for role in RAZIE_ROLES) or any(role in user_roles for role in MAFIA_ROLES)
@@ -112,7 +109,7 @@ def has_razie_perm():
 
 def has_wash_perm():
     def predicate(interaction: discord.Interaction) -> bool:
-        if interaction.user.guild_permissions.administrator:
+        if check_super_admin(interaction.user):
             return True
         user_roles = [role.name for role in interaction.user.roles]
         return any(role in user_roles for role in WASH_ADMIN_ROLES)
@@ -120,7 +117,7 @@ def has_wash_perm():
 
 def has_director_wash_perm():
     def predicate(interaction: discord.Interaction) -> bool:
-        if interaction.user.guild_permissions.administrator:
+        if check_super_admin(interaction.user):
             return True
         user_roles = [role.name for role in interaction.user.roles]
         return any(role in user_roles for role in DIRECTOR_WASH_ROLE)
@@ -128,7 +125,7 @@ def has_director_wash_perm():
 
 def has_hr_perm():
     def predicate(interaction: discord.Interaction) -> bool:
-        if interaction.user.guild_permissions.administrator:
+        if check_super_admin(interaction.user):
             return True
         user_roles = [role.name for role in interaction.user.roles]
         return any(role in user_roles for role in HR_ROLES)
@@ -143,8 +140,6 @@ RECIPES = {
     "joint": {"nume": "🚬 Joint Marijuana (1 bucată)", "output_qty": 1, "ingredients": {"marijuana_maruntita": 1, "filtru": 1, "foita": 1, "grinder": 1}},
     "adderall": {"nume": "💊 Pastile Adderall (1 tableta)", "output_qty": 1, "ingredients": {"acid_benzoic": 1, "acetona": 1, "metamphetamina": 1, "tub_pastile": 1}},
     "pachet_tigari": {"nume": "📦 Pachet de Țigări (1 bucată)", "output_qty": 1, "ingredients": {"tutun_maruntit": 20, "foita": 5, "filtru": 5, "pachet_gol": 1, "rasnita_tutun": 1}},
-
-    # --- ARME MICI ---
     "weapon_pistol": {"nume": "🔫 Weapon Pistol", "output_qty": 1, "ingredients": {"bani": 13000, "element": 1, "cadru": 1, "teava": 1, "mecanism": 1}},
     "pistol50": {"nume": "🔫 Pistol .50", "output_qty": 1, "ingredients": {"bani": 32500, "element": 3, "cadru": 1, "teava": 1, "mecanism": 1}},
     "microsmg": {"nume": "🔫 Micro SMG", "output_qty": 1, "ingredients": {"bani": 39000, "element": 3, "cadru": 1, "teava": 1, "mecanism": 1}},
@@ -152,8 +147,6 @@ RECIPES = {
     "machinepistol": {"nume": "🔫 MachinePistol (TEC-9)", "output_qty": 1, "ingredients": {"bani": 97500, "element": 5, "cadru": 1, "teava": 1, "mecanism": 1}},
     "vintage_pistol": {"nume": "🔫 Vintage Pistol", "output_qty": 1, "ingredients": {"bani": 117000, "element": 9, "cadru": 1, "teava": 1, "mecanism": 1}},
     "ceramic_pistol": {"nume": "🔫 Ceramic Pistol", "output_qty": 1, "ingredients": {"bani": 45500, "element": 4, "cadru": 1, "teava": 1, "mecanism": 1}},
-
-    # --- ARME MARI ---
     "sawnoff_shotgun": {"nume": "💥 SawnOff Shotgun", "output_qty": 1, "ingredients": {"bani": 145000, "element": 12, "cadru": 1, "teava": 1, "mecanism": 1}},
     "assault_rifle": {"nume": "⚔️ Assault Rifle", "output_qty": 1, "ingredients": {"bani": 58500, "element": 7, "cadru": 1, "teava": 1, "mecanism": 1}},
     "assault_rifle_mk2": {"nume": "⚔️ Assault Rifle MK2", "output_qty": 1, "ingredients": {"bani": 65000, "element": 10, "cadru": 1, "teava": 1, "mecanism": 1}},
@@ -162,8 +155,6 @@ RECIPES = {
     "gusenberg": {"nume": "💥 Gusenberg Sweeper", "output_qty": 1, "ingredients": {"bani": 162500, "element": 13, "cadru": 1, "teava": 1, "mecanism": 1}},
     "navy_revolver": {"nume": "🔫 Navy Revolver", "output_qty": 1, "ingredients": {"bani": 195000, "element": 15, "cadru": 1, "teava": 1, "mecanism": 1}},
     "revolver": {"nume": "🔫 Revolver", "output_qty": 1, "ingredients": {"bani": 182000, "element": 15, "cadru": 1, "teava": 1, "mecanism": 1}},
-
-    # --- ARME ALBE ---
     "knife": {"nume": "🔪 Knife (Cuțit)", "output_qty": 1, "ingredients": {"bani": 13000, "element": 1, "cauciuc": 1}},
     "bata": {"nume": "🏏 Bâtă de Baseball", "output_qty": 1, "ingredients": {"bani": 8000, "placaj": 5}},
     "rozeta": {"nume": "🥊 Rozetă", "output_qty": 1, "ingredients": {"bani": 10000, "element": 1, "cauciuc": 1}},
@@ -172,8 +163,6 @@ RECIPES = {
     "macheta": {"nume": "🪓 Machetă", "output_qty": 1, "ingredients": {"bani": 26000, "element": 2, "cauciuc": 5}},
     "battle_axe": {"nume": "🪓 Battle Axe", "output_qty": 1, "ingredients": {"bani": 26000, "element": 2, "cauciuc": 2, "placaj": 2}},
     "lanterna": {"nume": "🔦 Lanternă", "output_qty": 1, "ingredients": {"bani": 13000, "element": 1, "bec": 1, "lupa": 1, "arc": 1}},
-
-    # --- MUNIȚIE ---
     "munitie_weapon_pistol": {"nume": "🔹 Muniție Weapon Pistol (15 gloanțe)", "output_qty": 15, "ingredients": {"praf_de_pusca": 5}},
     "munitie_pistol50": {"nume": "🔹 Muniție Pistol .50 (15 gloanțe)", "output_qty": 15, "ingredients": {"praf_de_pusca": 5}},
     "munitie_microsmg": {"nume": "🔹 Muniție Micro SMG (30 gloanțe)", "output_qty": 30, "ingredients": {"praf_de_pusca": 5}},
@@ -189,8 +178,6 @@ RECIPES = {
     "munitie_gusenberg": {"nume": "🔹 Muniție Gusenberg (30 gloanțe)", "output_qty": 30, "ingredients": {"praf_de_pusca": 5}},
     "munitie_navy_revolver": {"nume": "🔹 Muniție Navy Revolver (15 gloanțe)", "output_qty": 15, "ingredients": {"praf_de_pusca": 5}},
     "munitie_revolver": {"nume": "🔹 Muniție Revolver (15 gloanțe)", "output_qty": 15, "ingredients": {"praf_de_pusca": 5}},
-
-    # --- ATAȘAMENTE ---
     "atasament_p50_ext": {"nume": "🔧 Atasament P.50 - Extended Weapon", "output_qty": 1, "ingredients": {"element_fixare": 1, "otel": 1, "arc": 5}},
     "atasament_p50_flash": {"nume": "🔧 Atasament P.50 - Flashlight", "output_qty": 1, "ingredients": {"element_fixare": 1, "otel": 1, "bec": 1, "lupa": 2}},
     "atasament_p50_supp": {"nume": "🔧 Atasament P.50 - Suppressor", "output_qty": 1, "ingredients": {"element_fixare": 1, "otel": 1, "cauciuc": 3}},
@@ -270,7 +257,36 @@ class LivratView(discord.ui.View):
             await interaction.response.edit_message(embed=embed, view=self)
         return callback
 
-# ==================== FORMULAR INACTIVITATE (CORECTAT) ====================
+# ==================== FORMULAR INACTIVITATE CU MOTIV RESPINGERE & DM ====================
+
+class InactivitateRejectModal(discord.ui.Modal, title="❌ Motiv Respingere Inactivitate"):
+    motiv = discord.ui.TextInput(label="Motivul Respingerii", style=discord.TextStyle.paragraph, placeholder="Scrie motivul pentru care a fost respinsă...", required=True)
+
+    def __init__(self, applicant: discord.Member, message: discord.Message):
+        super().__init__()
+        self.applicant = applicant
+        self.message = message
+
+    async def on_submit(self, interaction: discord.Interaction):
+        embed = self.message.embeds[0]
+        embed.color = discord.Color.red()
+        embed.set_field_at(3, name="Status Cerere", value=f"❌ **RESPINSĂ** de {interaction.user.mention}\n**Motiv:** {self.motiv.value}", inline=False)
+        
+        view = InactivitateApprovalView(applicant=self.applicant)
+        for item in view.children:
+            item.disabled = True
+
+        await self.message.edit(embed=embed, view=view)
+        await interaction.response.send_message("❌ Cererea a fost respinsă cu succes!", ephemeral=True)
+
+        try:
+            dm_embed = discord.Embed(title="❌ CERERE INACTIVITATE RESPINSĂ", color=discord.Color.red(), timestamp=datetime.datetime.now())
+            dm_embed.add_field(name="📋 Status", value="Cererea ta de inactivitate a fost respinsă.", inline=False)
+            dm_embed.add_field(name="📝 Motiv", value=self.motiv.value, inline=False)
+            dm_embed.set_footer(text="Kara Hilal Management")
+            await self.applicant.send(embed=dm_embed)
+        except discord.Forbidden:
+            pass
 
 class InactivitateApprovalView(discord.ui.View):
     def __init__(self, applicant: discord.Member):
@@ -280,7 +296,7 @@ class InactivitateApprovalView(discord.ui.View):
     @discord.ui.button(label="Aprobă", style=discord.ButtonStyle.success, emoji="✅")
     async def btn_aprob(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
-        if not (any(r in user_roles for r in MAFIA_ROLES) or interaction.user.guild_permissions.administrator):
+        if not (check_super_admin(interaction.user) or any(r in user_roles for r in MAFIA_ROLES) or interaction.user.guild_permissions.administrator):
             await interaction.response.send_message("❌ Doar Conducerea poate aproba inactivitățile!", ephemeral=True)
             return
 
@@ -291,19 +307,22 @@ class InactivitateApprovalView(discord.ui.View):
             item.disabled = True
         await interaction.response.edit_message(embed=embed, view=self)
 
+        try:
+            dm_embed = discord.Embed(title="✅ CERERE INACTIVITATE APROBATĂ", color=discord.Color.green(), timestamp=datetime.datetime.now())
+            dm_embed.add_field(name="📋 Status", value=f"Cererea ta de inactivitate a fost aprobată de {interaction.user.mention}.", inline=False)
+            dm_embed.set_footer(text="Kara Hilal Management")
+            await self.applicant.send(embed=dm_embed)
+        except discord.Forbidden:
+            pass
+
     @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, emoji="❌")
     async def btn_respinge(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
-        if not (any(r in user_roles for r in MAFIA_ROLES) or interaction.user.guild_permissions.administrator):
+        if not (check_super_admin(interaction.user) or any(r in user_roles for r in MAFIA_ROLES) or interaction.user.guild_permissions.administrator):
             await interaction.response.send_message("❌ Doar Conducerea poate respinge inactivitățile!", ephemeral=True)
             return
 
-        embed = interaction.message.embeds[0]
-        embed.color = discord.Color.red()
-        embed.set_field_at(3, name="Status Cerere", value=f"❌ **RESPINSĂ** de {interaction.user.mention}", inline=False)
-        for item in self.children:
-            item.disabled = True
-        await interaction.response.edit_message(embed=embed, view=self)
+        await interaction.response.send_modal(InactivitateRejectModal(applicant=self.applicant, message=interaction.message))
 
 class InactivitateModal(discord.ui.Modal, title="📝 Formular Inactivitate Kara Hilal"):
     data_inceput = discord.ui.TextInput(label="Data Început", placeholder="Ex: 15/10/2026", required=True)
@@ -370,7 +389,7 @@ class ActivityView(discord.ui.View):
 
     @discord.ui.button(label="Oprește Activitatea", style=discord.ButtonStyle.danger, emoji="⏹️", row=1)
     async def btn_stop(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user != self.organizator and not interaction.user.guild_permissions.administrator:
+        if interaction.user != self.organizator and not check_super_admin(interaction.user) and not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("❌ Doar organizatorul poate opri activitatea!", ephemeral=True)
             return
 
@@ -390,7 +409,7 @@ class ActivityView(discord.ui.View):
 
     @discord.ui.button(label="Adaugă / Exclude Membru", style=discord.ButtonStyle.secondary, emoji="⚙️", row=1)
     async def btn_manage(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user != self.organizator and not interaction.user.guild_permissions.administrator:
+        if interaction.user != self.organizator and not check_super_admin(interaction.user) and not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("❌ Doar organizatorul poate gestiona membrii!", ephemeral=True)
             return
         await interaction.response.send_modal(ManageMemberModal(self))
@@ -461,19 +480,15 @@ class BuletinModal(discord.ui.Modal, title="🪪 Registru Buletin IC"):
         if channel:
             await channel.send(embed=embed)
 
-# ==================== COMENZI PRINCIPALE MAFIA KARA HILAL ====================
+# ==================== COMENZI PRINCIPALE ====================
 
 @bot.tree.command(name="statie", description="📻 [EXCLUSIV GRADUL .] Anunță frecvența și parola pentru stație pe canalul dedicat")
 @has_super_admin_perm()
 @app_commands.describe(frecventa="Frecvența stației (ex: 100.5)", parola="Parola de la stație", detalii="Detalii suplimentare (opțional)")
 async def statie(interaction: discord.Interaction, frecventa: str, parola: str, detalii: str = "Păstrați stația curată în timpul acțiunilor!"):
-    target_channel = None
-    for channel in interaction.guild.text_channels:
-        if "frecventa-statie" in channel.name.lower():
-            target_channel = channel
-            break
-
+    target_channel = discord.utils.get(interaction.guild.text_channels, name="frecventa-statie")
     ping = get_kara_ping(interaction.guild)
+    
     embed = discord.Embed(
         title="📻 FRECVENȚĂ STAȚIE ACTIVĂ — KARA HILAL",
         description="**Conducerea a stabilit o nouă frecvență de comunicare! Conectați-vă imediat.**",
@@ -491,7 +506,7 @@ async def statie(interaction: discord.Interaction, frecventa: str, parola: str, 
         await interaction.response.send_message(f"✅ Frecvența și parola au fost postate pe canalul {target_channel.mention}!", ephemeral=True)
     else:
         await interaction.channel.send(content=f"{ping} 🌙 **FRECVENȚĂ STAȚIE ACTUALIZATĂ!**", embed=embed)
-        await interaction.response.send_message("⚠️ Canalul `frecventa-statie` nu a fost găsit cu exactitate, am postat pe canalul curent!", ephemeral=True)
+        await interaction.response.send_message("⚠️ Canalul `frecventa-statie` nu a fost găsit, am postat pe canalul curent!", ephemeral=True)
 
 
 @bot.tree.command(name="backup", description="🚨 Trimite un semnal de alarmă de urgență pentru toți membrii mafiei!")
@@ -504,7 +519,6 @@ async def backup(interaction: discord.Interaction, locatie: str, detalii: str = 
     embed.add_field(name="📝 Detalii", value=detalii, inline=False)
     embed.add_field(name="👤 Solicitat de", value=interaction.user.mention, inline=True)
     embed.set_footer(text="Apasă F8 și conectează-te pe FiveM!")
-
     await interaction.response.send_message(content=f"{ping} 🌙 **ÎNTĂRIRI URGENTE!**", embed=embed)
 
 
@@ -562,7 +576,7 @@ async def reminder(interaction: discord.Interaction, minute_asteptare: int, mesa
     await interaction.channel.send(content=f"{ping} 🌙 **REMINDER ACTIVITATE!**", embed=embed)
 
 
-@bot.tree.command(name="misiune_set", description="🎯 [LIDERI / .] Setează o misiune săptămânală")
+@bot.tree.command(name="misiune_set", description="🎯 Setează o misiune săptămânală")
 @has_mafia_perm()
 @app_commands.describe(titlu="Titlul Misiunii", descriere="Instrucțiunile/Misiunea", recompensa="Ce primesc la final")
 async def misiune_set(interaction: discord.Interaction, titlu: str, descriere: str, recompensa: str):
@@ -596,7 +610,7 @@ async def trimite_buletin(interaction: discord.Interaction, poza_buletin: discor
     await interaction.response.send_modal(BuletinModal(imagine_buletin=poza_buletin))
 
 
-@bot.tree.command(name="creeaza_activitate", description="[LIDERI / .] Inițiază o activitate")
+@bot.tree.command(name="creeaza_activitate", description="Inițiază o activitate")
 @has_mafia_perm()
 @app_commands.describe(titlu="Titlu", ora_data="Data & Ora", descriere="Instrucțiuni")
 async def creeaza_activitate(interaction: discord.Interaction, titlu: str, ora_data: str, descriere: str):
@@ -712,7 +726,7 @@ async def livrat(interaction: discord.Interaction, zona: str, drog: str, cantita
     await interaction.response.send_message("✅ Comanda specială a fost înregistrată cu succes!", ephemeral=True)
 
 
-@bot.tree.command(name="razie", description="🚨 [SULTAN / VIZIR / RAZIE] Anunță o razie Cayo în desfășurare")
+@bot.tree.command(name="razie", description="🚨 Anunță o razie Cayo în desfășurare")
 @has_razie_perm()
 @app_commands.describe(frecventa="Frecvența pe care se ține razia (ex: 155.5)")
 async def razie(interaction: discord.Interaction, frecventa: str):
@@ -769,7 +783,7 @@ async def pontaj_stop(interaction: discord.Interaction):
     await interaction.response.send_message(f"🔴 Tură încheiată! Durată sesiune: `{format_seconds(sec)}`", ephemeral=True)
 
 
-@bot.tree.command(name="pontaje_active", description="🟢 [HR] Afișază membrii care au tura de muncă deschisă în acest moment")
+@bot.tree.command(name="pontaje_active", description="🟢 [HR] Afișază membrii care au tura deschisă")
 @has_hr_perm()
 async def pontaje_active(interaction: discord.Interaction):
     if not active_shifts:
@@ -778,13 +792,11 @@ async def pontaje_active(interaction: discord.Interaction):
 
     embed = discord.Embed(title="🟢 PONTAJE ACTIVE — KARA WASH", color=KH_CYAN, timestamp=datetime.datetime.now())
     text_active = ""
-    
     for uid, start_time in active_shifts.items():
         durata_curenta = (datetime.datetime.now() - start_time).total_seconds()
         text_active += f"🟢 <@!{uid}> — În tură de **{format_seconds(durata_curenta)}**\n"
 
     embed.add_field(name=f"Angajați Activi ({len(active_shifts)})", value=text_active, inline=False)
-    embed.set_footer(text="Kara Wash HR System • Monitorizare Live Ture")
     await interaction.response.send_message(embed=embed)
 
 
@@ -801,7 +813,7 @@ async def top_pontaj(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
-@bot.tree.command(name="profil_pontaj", description="📊 Verifică propriul tău profil și orele pontate la Kara Wash")
+@bot.tree.command(name="profil_pontaj", description="📊 Verifică propriul tău profil și orele pontate")
 @has_wash_perm()
 async def profil_pontaj(interaction: discord.Interaction):
     target = interaction.user
@@ -821,7 +833,7 @@ async def profil_pontaj(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
-@bot.tree.command(name="reset_pontaj", description="🔄 [EXCLUSIV DIRECTOR KARA] Resetează pontajul")
+@bot.tree.command(name="reset_pontaj", description="🔄 Resetează pontajul")
 @has_director_wash_perm()
 @app_commands.describe(membru="Membru de resetat", reset_toti="Setează pe True pentru resetare totală")
 async def reset_pontaj(interaction: discord.Interaction, membru: discord.Member = None, reset_toti: bool = False):
