@@ -16,7 +16,7 @@ class KaraHilalBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
-        print("Botul este pregătit. Folosește comanda '!sync' pe server pentru sincronizarea instantanee a comenzilor slash!")
+        print("Botul a pornit. Folosește comanda '!sync' pe server pentru a actualiza instant comenzile slash!")
 
 bot = KaraHilalBot()
 
@@ -131,18 +131,18 @@ def has_hr_perm():
         return any(role in user_roles for role in HR_ROLES)
     return app_commands.check(predicate)
 
-# ==================== COMANDĂ DE SINCRONIZARE INSTANT ====================
+# ==================== COMANDĂ DE SINCRONIZARE (!sync) ====================
 @bot.command(name="sync")
 async def sync_guild(ctx: commands.Context):
     if check_super_admin(ctx.author) or ctx.author.guild_permissions.administrator:
         synced = await bot.tree.sync(guild=ctx.guild)
         bot.tree.copy_global_to(guild=ctx.guild)
         await bot.tree.sync(guild=ctx.guild)
-        await ctx.send(f"✅ Am sincronizat instant `{len(synced)}` comenzi Slash pentru serverul acesta!")
+        await ctx.send(f"✅ S-au sincronizat instant `{len(synced)}` comenzi Slash pe acest server!")
     else:
         await ctx.send("❌ Nu ai permisiunea de a folosi comanda de sincronizare!")
 
-# ==================== BAZĂ DE DATE REȚETE COMPLETĂ ====================
+# ==================== BAZĂ DE DATE REȚETE ====================
 
 RECIPES = {
     "cocaina": {"nume": "🍃 Cocaină (4 plicuri)", "output_qty": 4, "ingredients": {"frunze": 12, "plic_gol": 4, "amoniac": 1, "sodiu": 1}},
@@ -268,7 +268,7 @@ class LivratView(discord.ui.View):
             await interaction.response.edit_message(embed=embed, view=self)
         return callback
 
-# ==================== FORMULAR INACTIVITATE CU MOTIV RESPINGERE & DM DIRECT ====================
+# ==================== FORMULAR INACTIVITATE CU DM DIRECT ȘI EXTRAGERE SIGURĂ ====================
 
 def extract_member_from_embed(guild: discord.Guild, embed: discord.Embed) -> discord.Member:
     for field in embed.fields:
@@ -280,7 +280,7 @@ def extract_member_from_embed(guild: discord.Guild, embed: discord.Embed) -> dis
     return None
 
 class InactivitateRejectModal(discord.ui.Modal, title="❌ Motiv Respingere Inactivitate"):
-    motiv = discord.ui.TextInput(label="Motivul Respingerii", style=discord.TextStyle.paragraph, placeholder="Scrie motivul pentru care a fost respinsă...", required=True)
+    motiv = discord.ui.TextInput(label="Motivul Respingerii", style=discord.TextStyle.paragraph, placeholder="Scrie motivul...", required=True)
 
     def __init__(self, message: discord.Message):
         super().__init__()
@@ -312,15 +312,15 @@ class InactivitateRejectModal(discord.ui.Modal, title="❌ Motiv Respingere Inac
                 dm_sent = False
 
         if dm_sent:
-            await interaction.response.send_message("❌ Cererea a fost respinsă, iar membrul a fost notificat prin mesaje private!", ephemeral=True)
+            await interaction.response.send_message("❌ Cererea a fost respinsă, iar utilizatorul a fost notificat în privat!", ephemeral=True)
         else:
-            await interaction.response.send_message("❌ Cererea a fost respinsă! (Notă: Membrul nu a putut primi DM din cauza setărilor de confidențialitate).", ephemeral=True)
+            await interaction.response.send_message("❌ Cererea a fost respinsă! (Atenție: Utilizatorul are mesajele private blocate).", ephemeral=True)
 
 class InactivitateApprovalView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Aprobă", style=discord.ButtonStyle.success, emoji="✅", custom_id="inact_aprob_btn")
+    @discord.ui.button(label="Aprobă", style=discord.ButtonStyle.success, emoji="✅", custom_id="inact_aprob_btn_v2")
     async def btn_aprob(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
         if not (check_super_admin(interaction.user) or any(r in user_roles for r in MAFIA_ROLES) or interaction.user.guild_permissions.administrator):
@@ -334,7 +334,7 @@ class InactivitateApprovalView(discord.ui.View):
         embed.set_field_at(3, name="Status Cerere", value=f"✅ **APROBATĂ** de {interaction.user.mention}", inline=False)
         for item in self.children:
             item.disabled = True
-        await interaction.response.edit_message(embed=embed, view=self)
+        await interaction.message.edit(embed=embed, view=self)
 
         dm_sent = False
         if applicant:
@@ -348,11 +348,11 @@ class InactivitateApprovalView(discord.ui.View):
                 dm_sent = False
 
         if dm_sent:
-            await interaction.followup.send("✅ Cererea a fost aprobată, iar membrul a primit mesajul în privat!", ephemeral=True)
+            await interaction.response.send_message("✅ Cererea a fost aprobată și s-a trimis mesaj privat membrului!", ephemeral=True)
         else:
-            await interaction.followup.send("✅ Cererea a fost aprobată! (Membrul are mesajele private blocate).", ephemeral=True)
+            await interaction.response.send_message("✅ Cererea a fost aprobată! (Atenție: Membrul are DM-urile închise și nu a putut fi notificat în privat).", ephemeral=True)
 
-    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, emoji="❌", custom_id="inact_resping_btn")
+    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, emoji="❌", custom_id="inact_resping_btn_v2")
     async def btn_respinge(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
         if not (check_super_admin(interaction.user) or any(r in user_roles for r in MAFIA_ROLES) or interaction.user.guild_permissions.administrator):
@@ -364,7 +364,7 @@ class InactivitateApprovalView(discord.ui.View):
 class InactivitateModal(discord.ui.Modal, title="📝 Formular Inactivitate Kara Hilal"):
     data_inceput = discord.ui.TextInput(label="Data Început", placeholder="Ex: 15/10/2026", required=True)
     data_sfarsit = discord.ui.TextInput(label="Data Sfârșit", placeholder="Ex: 20/10/2026", required=True)
-    motiv = discord.ui.TextInput(label="Motiv Inactivitate", style=discord.TextStyle.paragraph, placeholder="Motivul scurt...", required=True)
+    motiv = discord.ui.TextInput(label="Motiv Inactivitate", style=discord.TextStyle.paragraph, placeholder="Motivul...", required=True)
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.send_message("✅ Cererea ta de inactivitate a fost trimisă către Conducere!", ephemeral=True)
@@ -517,7 +517,7 @@ class BuletinModal(discord.ui.Modal, title="🪪 Registru Buletin IC"):
         if channel:
             await channel.send(embed=embed)
 
-# ==================== COMENZI PRINCIPALE ====================
+# ==================== COMENZI PRINCIPALE (CU @┇Kara Hilal PESTE TOT) ====================
 
 @bot.tree.command(name="statie", description="📻 Anunță frecvența și parola pentru stație pe canalul dedicat")
 @has_super_admin_perm()
