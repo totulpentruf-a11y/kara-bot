@@ -5,6 +5,7 @@ import datetime
 import math
 import asyncio
 import os
+import re
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -15,8 +16,7 @@ class KaraHilalBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
-        await self.tree.sync()
-        print("Comenzile Slash (Kara Hilal + Kara Wash - Ultimate Edition) au fost sincronizate cu succes!")
+        print("Botul este pregătit. Folosește comanda '!sync' pe server pentru sincronizarea instantanee a comenzilor slash!")
 
 bot = KaraHilalBot()
 
@@ -130,6 +130,17 @@ def has_hr_perm():
         user_roles = [role.name for role in interaction.user.roles]
         return any(role in user_roles for role in HR_ROLES)
     return app_commands.check(predicate)
+
+# ==================== COMANDĂ DE SINCRONIZARE INSTANT ====================
+@bot.command(name="sync")
+async def sync_guild(ctx: commands.Context):
+    if check_super_admin(ctx.author) or ctx.author.guild_permissions.administrator:
+        synced = await bot.tree.sync(guild=ctx.guild)
+        bot.tree.copy_global_to(guild=ctx.guild)
+        await bot.tree.sync(guild=ctx.guild)
+        await ctx.send(f"✅ Am sincronizat instant `{len(synced)}` comenzi Slash pentru serverul acesta!")
+    else:
+        await ctx.send("❌ Nu ai permisiunea de a folosi comanda de sincronizare!")
 
 # ==================== BAZĂ DE DATE REȚETE COMPLETĂ ====================
 
@@ -257,43 +268,59 @@ class LivratView(discord.ui.View):
             await interaction.response.edit_message(embed=embed, view=self)
         return callback
 
-# ==================== FORMULAR INACTIVITATE CU MOTIV RESPINGERE & DM ====================
+# ==================== FORMULAR INACTIVITATE CU MOTIV RESPINGERE & DM DIRECT ====================
+
+def extract_member_from_embed(guild: discord.Guild, embed: discord.Embed) -> discord.Member:
+    for field in embed.fields:
+        if field.name == "👤 Membru":
+            match = re.search(r'<@!?(\d+)>', field.value)
+            if match:
+                user_id = int(match.group(1))
+                return guild.get_member(user_id)
+    return None
 
 class InactivitateRejectModal(discord.ui.Modal, title="❌ Motiv Respingere Inactivitate"):
     motiv = discord.ui.TextInput(label="Motivul Respingerii", style=discord.TextStyle.paragraph, placeholder="Scrie motivul pentru care a fost respinsă...", required=True)
 
-    def __init__(self, applicant: discord.Member, message: discord.Message):
+    def __init__(self, message: discord.Message):
         super().__init__()
-        self.applicant = applicant
         self.message = message
 
     async def on_submit(self, interaction: discord.Interaction):
         embed = self.message.embeds[0]
+        applicant = extract_member_from_embed(interaction.guild, embed)
+
         embed.color = discord.Color.red()
         embed.set_field_at(3, name="Status Cerere", value=f"❌ **RESPINSĂ** de {interaction.user.mention}\n**Motiv:** {self.motiv.value}", inline=False)
         
-        view = InactivitateApprovalView(applicant=self.applicant)
+        view = InactivitateApprovalView()
         for item in view.children:
             item.disabled = True
 
         await self.message.edit(embed=embed, view=view)
-        await interaction.response.send_message("❌ Cererea a fost respinsă cu succes!", ephemeral=True)
 
-        try:
-            dm_embed = discord.Embed(title="❌ CERERE INACTIVITATE RESPINSĂ", color=discord.Color.red(), timestamp=datetime.datetime.now())
-            dm_embed.add_field(name="📋 Status", value="Cererea ta de inactivitate a fost respinsă.", inline=False)
-            dm_embed.add_field(name="📝 Motiv", value=self.motiv.value, inline=False)
-            dm_embed.set_footer(text="Kara Hilal Management")
-            await self.applicant.send(embed=dm_embed)
-        except discord.Forbidden:
-            pass
+        dm_sent = False
+        if applicant:
+            try:
+                dm_embed = discord.Embed(title="❌ CERERE INACTIVITATE RESPINSĂ", color=discord.Color.red(), timestamp=datetime.datetime.now())
+                dm_embed.add_field(name="📋 Status", value="Cererea ta de inactivitate a fost respinsă.", inline=False)
+                dm_embed.add_field(name="📝 Motiv", value=self.motiv.value, inline=False)
+                dm_embed.set_footer(text="Kara Hilal Management")
+                await applicant.send(embed=dm_embed)
+                dm_sent = True
+            except discord.Forbidden:
+                dm_sent = False
+
+        if dm_sent:
+            await interaction.response.send_message("❌ Cererea a fost respinsă, iar membrul a fost notificat prin mesaje private!", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ Cererea a fost respinsă! (Notă: Membrul nu a putut primi DM din cauza setărilor de confidențialitate).", ephemeral=True)
 
 class InactivitateApprovalView(discord.ui.View):
-    def __init__(self, applicant: discord.Member):
+    def __init__(self):
         super().__init__(timeout=None)
-        self.applicant = applicant
 
-    @discord.ui.button(label="Aprobă", style=discord.ButtonStyle.success, emoji="✅")
+    @discord.ui.button(label="Aprobă", style=discord.ButtonStyle.success, emoji="✅", custom_id="inact_aprob_btn")
     async def btn_aprob(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
         if not (check_super_admin(interaction.user) or any(r in user_roles for r in MAFIA_ROLES) or interaction.user.guild_permissions.administrator):
@@ -301,28 +328,38 @@ class InactivitateApprovalView(discord.ui.View):
             return
 
         embed = interaction.message.embeds[0]
+        applicant = extract_member_from_embed(interaction.guild, embed)
+
         embed.color = discord.Color.green()
         embed.set_field_at(3, name="Status Cerere", value=f"✅ **APROBATĂ** de {interaction.user.mention}", inline=False)
         for item in self.children:
             item.disabled = True
         await interaction.response.edit_message(embed=embed, view=self)
 
-        try:
-            dm_embed = discord.Embed(title="✅ CERERE INACTIVITATE APROBATĂ", color=discord.Color.green(), timestamp=datetime.datetime.now())
-            dm_embed.add_field(name="📋 Status", value=f"Cererea ta de inactivitate a fost aprobată de {interaction.user.mention}.", inline=False)
-            dm_embed.set_footer(text="Kara Hilal Management")
-            await self.applicant.send(embed=dm_embed)
-        except discord.Forbidden:
-            pass
+        dm_sent = False
+        if applicant:
+            try:
+                dm_embed = discord.Embed(title="✅ CERERE INACTIVITATE APROBATĂ", color=discord.Color.green(), timestamp=datetime.datetime.now())
+                dm_embed.add_field(name="📋 Status", value=f"Cererea ta de inactivitate a fost aprobată de {interaction.user.mention}.", inline=False)
+                dm_embed.set_footer(text="Kara Hilal Management")
+                await applicant.send(embed=dm_embed)
+                dm_sent = True
+            except discord.Forbidden:
+                dm_sent = False
 
-    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, emoji="❌")
+        if dm_sent:
+            await interaction.followup.send("✅ Cererea a fost aprobată, iar membrul a primit mesajul în privat!", ephemeral=True)
+        else:
+            await interaction.followup.send("✅ Cererea a fost aprobată! (Membrul are mesajele private blocate).", ephemeral=True)
+
+    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, emoji="❌", custom_id="inact_resping_btn")
     async def btn_respinge(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
         if not (check_super_admin(interaction.user) or any(r in user_roles for r in MAFIA_ROLES) or interaction.user.guild_permissions.administrator):
             await interaction.response.send_message("❌ Doar Conducerea poate respinge inactivitățile!", ephemeral=True)
             return
 
-        await interaction.response.send_modal(InactivitateRejectModal(applicant=self.applicant, message=interaction.message))
+        await interaction.response.send_modal(InactivitateRejectModal(message=interaction.message))
 
 class InactivitateModal(discord.ui.Modal, title="📝 Formular Inactivitate Kara Hilal"):
     data_inceput = discord.ui.TextInput(label="Data Început", placeholder="Ex: 15/10/2026", required=True)
@@ -339,7 +376,7 @@ class InactivitateModal(discord.ui.Modal, title="📝 Formular Inactivitate Kara
         embed.add_field(name="Status Cerere", value="⏳ **ÎN AȘTEPTARE**", inline=False)
         embed.set_footer(text="Kara Hilal Management • Așteaptă decizia Liderilor")
 
-        view = InactivitateApprovalView(applicant=interaction.user)
+        view = InactivitateApprovalView()
         log_channel = discord.utils.get(interaction.guild.text_channels, name=LOG_INACTIVITATI_CHANNEL)
         if log_channel:
             await log_channel.send(embed=embed, view=view)
