@@ -27,6 +27,16 @@ KH_CYAN = discord.Color.from_rgb(0, 229, 255)   # Cyan Neon Kara Wash
 # ==================== PERMISIUNI ROLES ====================
 SUPER_ADMIN_ROLE = "."
 
+# Gradele de Conducere / Moderatori
+MOD_ROLES = [
+    "┇SULTAN",
+    "┇GRAND VIZIR",
+    "┇VIZIR"
+]
+
+# Rolul de bază Kara Hilal
+KARA_HILAL_ROLE = "┇Kara Hilal"
+
 MAFIA_ROLES = [
     "⋮ Kara Hilal", 
     "Kara Hilal", 
@@ -98,12 +108,20 @@ def has_super_admin_perm():
         return check_super_admin(interaction.user)
     return app_commands.check(predicate)
 
-def has_mafia_perm():
+def has_mod_perm():
     def predicate(interaction: discord.Interaction) -> bool:
         if check_super_admin(interaction.user):
             return True
         user_roles = [role.name for role in interaction.user.roles]
-        return any(role in user_roles for role in MAFIA_ROLES)
+        return any(role in user_roles for role in MOD_ROLES)
+    return app_commands.check(predicate)
+
+def has_kara_hilal_perm():
+    def predicate(interaction: discord.Interaction) -> bool:
+        if check_super_admin(interaction.user):
+            return True
+        user_roles = [role.name for role in interaction.user.roles]
+        return any(role in user_roles for role in MOD_ROLES) or any(role == KARA_HILAL_ROLE for role in user_roles) or any(role in user_roles for role in MAFIA_ROLES)
     return app_commands.check(predicate)
 
 def has_razie_perm():
@@ -111,7 +129,7 @@ def has_razie_perm():
         if check_super_admin(interaction.user):
             return True
         user_roles = [role.name for role in interaction.user.roles]
-        return any(role in user_roles for role in RAZIE_ROLES) or any(role in user_roles for role in MAFIA_ROLES)
+        return any(role in user_roles for role in RAZIE_ROLES) or any(role in user_roles for role in MOD_ROLES)
     return app_commands.check(predicate)
 
 def has_wash_perm():
@@ -327,11 +345,11 @@ class InactivitateApprovalView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Aprobă", style=discord.ButtonStyle.success, emoji="✅", custom_id="inact_aprob_btn_v4")
+    @discord.ui.button(label="Aprobă", style=discord.ButtonStyle.success, emoji="✅", custom_id="inact_aprob_btn_v6")
     async def btn_aprob(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
-        if not (check_super_admin(interaction.user) or any(r in user_roles for r in MAFIA_ROLES) or interaction.user.guild_permissions.administrator):
-            await interaction.response.send_message("❌ Doar Conducerea poate aproba inactivitățile!", ephemeral=True)
+        if not (check_super_admin(interaction.user) or any(r in user_roles for r in MOD_ROLES) or interaction.user.guild_permissions.administrator):
+            await interaction.response.send_message("❌ Doar Conducerea / Mod poate aproba inactivitățile!", ephemeral=True)
             return
 
         embed = interaction.message.embeds[0]
@@ -359,11 +377,11 @@ class InactivitateApprovalView(discord.ui.View):
         else:
             await interaction.response.send_message("✅ Cererea a fost aprobată! (Atenție: Membrul are DM-urile închise și nu a putut fi notificat în privat).", ephemeral=True)
 
-    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, emoji="❌", custom_id="inact_resping_btn_v4")
+    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, emoji="❌", custom_id="inact_resping_btn_v6")
     async def btn_respinge(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
-        if not (check_super_admin(interaction.user) or any(r in user_roles for r in MAFIA_ROLES) or interaction.user.guild_permissions.administrator):
-            await interaction.response.send_message("❌ Doar Conducerea poate respinge inactivitățile!", ephemeral=True)
+        if not (check_super_admin(interaction.user) or any(r in user_roles for r in MOD_ROLES) or interaction.user.guild_permissions.administrator):
+            await interaction.response.send_message("❌ Doar Conducerea / Mod poate respinge inactivitățile!", ephemeral=True)
             return
 
         await interaction.response.send_modal(InactivitateRejectModal(message=interaction.message))
@@ -524,10 +542,10 @@ class BuletinModal(discord.ui.Modal, title="🪪 Registru Buletin IC"):
         if channel:
             await channel.send(embed=embed)
 
-# ==================== COMENZI PRINCIPALE CU PING DIRECT ÎN CANAL ====================
+# ==================== COMENZI PRINCIPALE ====================
 
 @bot.tree.command(name="statie", description="📻 Anunță frecvența și parola pentru stație pe canalul dedicat")
-@has_super_admin_perm()
+@has_mod_perm()
 @app_commands.describe(frecventa="Frecvența stației (ex: 100.5)", parola="Parola de la stație", detalii="Detalii suplimentare (opțional)")
 async def statie(interaction: discord.Interaction, frecventa: str, parola: str, detalii: str = "Păstrați stația curată în timpul acțiunilor!"):
     await interaction.response.send_message("✅ Se trimite anunțul de stație...", ephemeral=True)
@@ -550,7 +568,7 @@ async def statie(interaction: discord.Interaction, frecventa: str, parola: str, 
 
 
 @bot.tree.command(name="backup", description="🚨 Trimite un semnal de alarmă de urgență pentru toți membrii mafiei!")
-@has_mafia_perm()
+@has_kara_hilal_perm()
 @app_commands.describe(locatie="Locația exactă", detalii="Detalii confruntare")
 async def backup(interaction: discord.Interaction, locatie: str, detalii: str = "Fără detalii"):
     await interaction.response.send_message("✅ Se trimite semnalul de backup...", ephemeral=True)
@@ -564,7 +582,7 @@ async def backup(interaction: discord.Interaction, locatie: str, detalii: str = 
 
 
 @bot.tree.command(name="seif_deposit", description="📦 Înregistrează o depunere în seiful Kara Hilal")
-@has_mafia_perm()
+@has_kara_hilal_perm()
 @app_commands.describe(obiect_sau_suma="Suma sau obiectele depuse", detalii="Mențiuni")
 async def seif_deposit(interaction: discord.Interaction, obiect_sau_suma: str, detalii: str = "Nicio mențiune"):
     embed_public = discord.Embed(title="📦 SEIF KARA HILAL — DEPUNERE ÎNREGISTRATĂ", description=f"Depunere efectuată de {interaction.user.mention}.", color=KH_BLUE, timestamp=datetime.datetime.now())
@@ -578,7 +596,7 @@ async def seif_deposit(interaction: discord.Interaction, obiect_sau_suma: str, d
 
 
 @bot.tree.command(name="calculeaza", description="🧮 Calculator rețete, muniție și atașamente")
-@has_mafia_perm()
+@has_kara_hilal_perm()
 @app_commands.describe(produs="Produsul dorit", cantitate_dorita="Cantitatea dorită")
 @app_commands.autocomplete(produs=recipe_autocomplete)
 async def calculeaza(interaction: discord.Interaction, produs: str, cantitate_dorita: int):
@@ -605,7 +623,7 @@ async def calculeaza(interaction: discord.Interaction, produs: str, cantitate_do
 
 
 @bot.tree.command(name="reminder", description="📢 Programază un reminder automat pentru o ședință / activitate")
-@has_mafia_perm()
+@has_mod_perm()
 @app_commands.describe(minute_asteptare="Peste câte minute să se trimită reminder-ul", mesaj="Mesajul / Detaliile despre activitate")
 async def reminder(interaction: discord.Interaction, minute_asteptare: int, mesaj: str):
     await interaction.response.send_message(f"⏰ Reminder programat! Va fi trimis peste `{minute_asteptare}` minute.", ephemeral=True)
@@ -618,7 +636,7 @@ async def reminder(interaction: discord.Interaction, minute_asteptare: int, mesa
 
 
 @bot.tree.command(name="misiune_set", description="🎯 Setează o misiune săptămânală")
-@has_mafia_perm()
+@has_kara_hilal_perm()
 @app_commands.describe(titlu="Titlul Misiunii", descriere="Instrucțiunile/Misiunea", recompensa="Ce primesc la final")
 async def misiune_set(interaction: discord.Interaction, titlu: str, descriere: str, recompensa: str):
     global misiune_curenta
@@ -632,7 +650,7 @@ async def misiune_set(interaction: discord.Interaction, titlu: str, descriere: s
 
 
 @bot.tree.command(name="misiune_view", description="🎯 Vizualizează misiunea săptămânală activă")
-@has_mafia_perm()
+@has_kara_hilal_perm()
 async def misiune_view(interaction: discord.Interaction):
     embed = discord.Embed(title=f"🎯 MISIUNE SĂPTĂMÂNALĂ ACTIVĂ", description=f"**Titlu:** {misiune_curenta['titlu']}\n\n**Descriere:** {misiune_curenta['descriere']}", color=KH_BLUE)
     embed.add_field(name="🎁 Recompensă", value=misiune_curenta['recompensa'], inline=False)
@@ -640,20 +658,20 @@ async def misiune_view(interaction: discord.Interaction):
 
 
 @bot.tree.command(name="inactivitate", description="📝 Completează un formular de inactivitate")
-@has_mafia_perm()
+@has_kara_hilal_perm()
 async def inactivitate(interaction: discord.Interaction):
     await interaction.response.send_modal(InactivitateModal())
 
 
 @bot.tree.command(name="trimite_buletin", description="Trimite evidența buletinului tău")
-@has_mafia_perm()
+@has_kara_hilal_perm()
 @app_commands.describe(poza_buletin="Poză buletin")
 async def trimite_buletin(interaction: discord.Interaction, poza_buletin: discord.Attachment):
     await interaction.response.send_modal(BuletinModal(imagine_buletin=poza_buletin))
 
 
 @bot.tree.command(name="creeaza_activitate", description="Inițiază o activitate")
-@has_mafia_perm()
+@has_mod_perm()
 @app_commands.describe(titlu="Titlu", ora_data="Data & Ora", descriere="Instrucțiuni")
 async def creeaza_activitate(interaction: discord.Interaction, titlu: str, ora_data: str, descriere: str):
     await interaction.response.send_message("✅ Se generează activitatea...", ephemeral=True)
@@ -670,7 +688,7 @@ async def creeaza_activitate(interaction: discord.Interaction, titlu: str, ora_d
 
 
 @bot.tree.command(name="agenda_add", description="📞 Adaugă un contact RP în agendă")
-@has_mafia_perm()
+@has_mod_perm()
 @app_commands.describe(nume_rp="Nume IC", functie_factiune="Rol / Facțiune", numar_telefon="Număr IC")
 async def agenda_add(interaction: discord.Interaction, nume_rp: str, functie_factiune: str, numar_telefon: str):
     agenda_telefonica.append({"nume": nume_rp, "functie": functie_factiune, "telefon": numar_telefon})
@@ -682,7 +700,7 @@ async def agenda_add(interaction: discord.Interaction, nume_rp: str, functie_fac
 
 
 @bot.tree.command(name="agenda_search", description="📞 Caută un număr de telefon RP în agendă")
-@has_mafia_perm()
+@has_kara_hilal_perm()
 @app_commands.describe(cautare="Numele sau funcția căutată")
 async def agenda_search(interaction: discord.Interaction, cautare: str):
     rezultate = [c for c in agenda_telefonica if cautare.lower() in c['nume'].lower() or cautare.lower() in c['functie'].lower()]
@@ -697,7 +715,7 @@ async def agenda_search(interaction: discord.Interaction, cautare: str):
 
 
 @bot.tree.command(name="agenda_delete", description="📞 Șterge un contact din agenda telefonică RP")
-@has_mafia_perm()
+@has_mod_perm()
 @app_commands.describe(cautare="Numele sau numărul de telefon al contactului de șters")
 async def agenda_delete(interaction: discord.Interaction, cautare: str):
     global agenda_telefonica
@@ -722,7 +740,7 @@ async def agenda_delete(interaction: discord.Interaction, cautare: str):
 
 
 @bot.tree.command(name="livrat", description="📦 Înregistrează o comandă specială / livrare droguri și status bani")
-@has_mafia_perm()
+@has_mod_perm()
 @app_commands.describe(
     zona="Zona de livrare",
     drog="Tipul de drog",
@@ -769,7 +787,7 @@ async def livrat(interaction: discord.Interaction, zona: str, drog: str, cantita
     await interaction.channel.send(content=f"{ping} 🌙 **COMANDĂ SPECIALĂ NOUĂ!**", embed=embed, view=view)
 
 
-@bot.tree.command(name="razie", description="🚨 Anunță o razie Cayo în desfășurare")
+@bot.tree.command(name="razie", description="🚨 Anunță o razie Cayo în desfășurari")
 @has_razie_perm()
 @app_commands.describe(frecventa="Frecvența pe care se ține razia (ex: 155.5)")
 async def razie(interaction: discord.Interaction, frecventa: str):
