@@ -27,14 +27,12 @@ KH_CYAN = discord.Color.from_rgb(0, 229, 255)   # Cyan Neon Kara Wash
 # ==================== PERMISIUNI ROLES ====================
 SUPER_ADMIN_ROLE = "."
 
-# Gradele de Conducere / Moderatori
 MOD_ROLES = [
     "┇SULTAN",
     "┇GRAND VIZIR",
     "┇VIZIR"
 ]
 
-# Rolul de bază Kara Hilal
 KARA_HILAL_ROLE = "┇Kara Hilal"
 
 MAFIA_ROLES = [
@@ -56,7 +54,6 @@ RAZIE_ROLES = [
     "Razie"
 ]
 
-# Adăugat și "KARA WASH" explicit în lista de permisiuni pentru spălătorie
 WASH_ADMIN_ROLES = [
     "Director Kara", 
     "Kara", 
@@ -80,6 +77,37 @@ LOG_BULETINE_SECRET_CHANNEL = "evidensa-buletine"
 LOG_SEIF_CHANNEL = "log-seif"
 LOG_SPALATORIE_CHANNEL = "log-spalatorie"
 LOG_INACTIVITATI_CHANNEL = "log-inactivitati"
+
+# ==================== BAZĂ DE DATE MEMBRI MAFIE ====================
+members_db = {
+    "marianandy": {"nume": "@❄marianandy❄", "data_intrare": "2/10/2026", "activitati": 0, "upuri": 0, "grad": "Kurd"},
+    "horhe": {"nume": "@82538 | Horhe", "data_intrare": "13/8/2026", "activitati": 13, "upuri": 1, "grad": "┇Askerler"},
+    "andreiq": {"nume": "@AndreiQ", "data_intrare": "2/10/2026", "activitati": 6, "upuri": 0, "grad": "Kurd"},
+    "ank": {"nume": "@ANK | 88584", "data_intrare": "23/09/2026", "activitati": 4, "upuri": 1, "grad": "┇Askerler"},
+    "ciao": {"nume": "@ciao", "data_intrare": "11/10/2026", "activitati": 4, "upuri": 0, "grad": "Kurd"},
+    "eren": {"nume": "@Cloud9Eren [37729]", "data_intrare": "6/9/2026", "activitati": 6, "upuri": 0, "grad": "Kurd"},
+    "corleonis": {"nume": "@Corleonis", "data_intrare": "13/10/2026", "activitati": 5, "upuri": 0, "grad": "Kurd"},
+    "david": {"nume": "@David | 51085", "data_intrare": "21/4/2026", "activitati": 1, "upuri": 0, "grad": "┇Askerler"},
+    "delia": {"nume": "@Delia | 69918", "data_intrare": "24/4/2026", "activitati": 0, "upuri": 1, "grad": "┇Askerler"},
+    "devis": {"nume": "@Devis | 32990", "data_intrare": "22/9/2026", "activitati": 0, "upuri": 0, "grad": "Kurd"},
+    "esmo": {"nume": "@Esmo / 7235", "data_intrare": "5/10/2026", "activitati": 2, "upuri": 0, "grad": "Kurd"},
+    "gufy": {"nume": "@Gufy_98 | 19432", "data_intrare": "22/9/2026", "activitati": 17, "upuri": 1, "grad": "┇Askerler"},
+    "italianu": {"nume": "@Italianu|56336", "data_intrare": "22/09/2026", "activitati": 4, "upuri": 0, "grad": "Kurd"},
+    "w4bzy": {"nume": "@w4bzy__", "data_intrare": "11/10/2026", "activitati": 3, "upuri": 0, "grad": "Kurd"}
+}
+
+def register_or_get_member(user: discord.Member):
+    key = user.name.lower()
+    if key not in members_db:
+        today_str = datetime.datetime.now().strftime("%d/%m/%Y")
+        members_db[key] = {
+            "nume": f"@{user.display_name}",
+            "data_intrare": today_str,
+            "activitati": 0,
+            "upuri": 0,
+            "grad": "Kurd"
+        }
+    return members_db[key]
 
 async def send_log(guild: discord.Guild, channel_name: str, embed: discord.Embed):
     channel = discord.utils.get(guild.text_channels, name=channel_name)
@@ -157,6 +185,11 @@ def has_hr_perm():
         user_roles = [role.name for role in interaction.user.roles]
         return any(role in user_roles for role in HR_ROLES)
     return app_commands.check(predicate)
+
+# ==================== DETECTARE AUTOMATĂ MEMBRU NOU PE SERVER ====================
+@bot.event
+async def on_member_join(member: discord.Member):
+    register_or_get_member(member)
 
 # ==================== COMANDĂ DE CURĂȚARE ȘI SINCRONIZARE (!clear_sync) ====================
 @bot.command(name="clear_sync")
@@ -347,7 +380,7 @@ class InactivitateApprovalView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Aprobă", style=discord.ButtonStyle.success, emoji="✅", custom_id="inact_aprob_btn_v7")
+    @discord.ui.button(label="Aprobă", style=discord.ButtonStyle.success, emoji="✅", custom_id="inact_aprob_btn_v9")
     async def btn_aprob(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
         if not (check_super_admin(interaction.user) or any(r in user_roles for r in MOD_ROLES) or interaction.user.guild_permissions.administrator):
@@ -379,7 +412,7 @@ class InactivitateApprovalView(discord.ui.View):
         else:
             await interaction.response.send_message("✅ Cererea a fost aprobată! (Atenție: Membrul are DM-urile închise și nu a putut fi notificat în privat).", ephemeral=True)
 
-    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, emoji="❌", custom_id="inact_resping_btn_v7")
+    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, emoji="❌", custom_id="inact_resping_btn_v9")
     async def btn_respinge(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
         if not (check_super_admin(interaction.user) or any(r in user_roles for r in MOD_ROLES) or interaction.user.guild_permissions.administrator):
@@ -408,7 +441,7 @@ class InactivitateModal(discord.ui.Modal, title="📝 Formular Inactivitate Kara
         if log_channel:
             await log_channel.send(embed=embed, view=view)
 
-# ==================== ACTIVITĂȚI & SUMAR ====================
+# ==================== ACTIVITĂȚI & SUMAR AUTOMATIZAT (LIVE UPDATE) ====================
 
 class ActivityView(discord.ui.View):
     def __init__(self, titlu_activitate, organizator: discord.Member):
@@ -419,7 +452,7 @@ class ActivityView(discord.ui.View):
         self.absenti = set()
         self.intarzieri = set()
 
-    async def update_embed(self, interaction: discord.Interaction):
+    async def update_message_embed(self, interaction: discord.Interaction):
         embed = interaction.message.embeds[0]
         prez_str = "\n".join([m.mention for m in self.prezenti]) if self.prezenti else "*Niciunul*"
         abs_str = "\n".join([m.mention for m in self.absenti]) if self.absenti else "*Niciunul*"
@@ -428,28 +461,43 @@ class ActivityView(discord.ui.View):
         embed.set_field_at(2, name=f"✅ Prezenți ({len(self.prezenti)})", value=prez_str, inline=True)
         embed.set_field_at(3, name=f"❌ Absenți ({len(self.absenti)})", value=abs_str, inline=True)
         embed.set_field_at(4, name=f"⏳ Întârzie ({len(self.intarzieri)})", value=int_str, inline=True)
-        await interaction.response.edit_message(embed=embed, view=self)
+        
+        # Editează mesajul existent pe loc (live update)
+        try:
+            await interaction.message.edit(embed=embed, view=self)
+        except discord.HTTPException:
+            pass
 
     @discord.ui.button(label="Prezent", style=discord.ButtonStyle.primary, emoji="✅")
     async def btn_prezent(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.absenti.discard(interaction.user)
         self.intarzieri.discard(interaction.user)
-        self.prezenti.add(interaction.user)
-        await self.update_embed(interaction)
+        
+        if interaction.user not in self.prezenti:
+            self.prezenti.add(interaction.user)
+            m_data = register_or_get_member(interaction.user)
+            m_data["activitati"] += 1
+
+        await interaction.response.defer()
+        await self.update_message_embed(interaction)
 
     @discord.ui.button(label="Absent", style=discord.ButtonStyle.danger, emoji="❌")
     async def btn_absent(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.prezenti.discard(interaction.user)
         self.intarzieri.discard(interaction.user)
         self.absenti.add(interaction.user)
-        await self.update_embed(interaction)
+        
+        await interaction.response.defer()
+        await self.update_message_embed(interaction)
 
     @discord.ui.button(label="Întârzii", style=discord.ButtonStyle.secondary, emoji="⏳")
     async def btn_intarzie(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.prezenti.discard(interaction.user)
         self.absenti.discard(interaction.user)
         self.intarzieri.add(interaction.user)
-        await self.update_embed(interaction)
+        
+        await interaction.response.defer()
+        await self.update_message_embed(interaction)
 
     @discord.ui.button(label="Oprește Activitatea", style=discord.ButtonStyle.danger, emoji="⏹️", row=1)
     async def btn_stop(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -507,12 +555,21 @@ class ManageMemberModal(discord.ui.Modal, title="Gestionare Membru Activitate"):
         if "adauga" in act:
             self.view_obj.absenti.discard(member)
             self.view_obj.intarzieri.discard(member)
-            self.view_obj.prezenti.add(member)
-            await interaction.response.send_message(f"✅ Membrul {member.mention} a fost adăugat la **Prezenți**.", ephemeral=True)
+            if member not in self.view_obj.prezenti:
+                self.view_obj.prezenti.add(member)
+                m_data = register_or_get_member(member)
+                m_data["activitati"] += 1
+            
+            # Actualizează mesajul live instant
+            await self.view_obj.update_message_embed(interaction)
+            await interaction.response.send_message(f"✅ Membrul {member.mention} a fost adăugat la **Prezenți** și înregistrat în listă!", ephemeral=True)
         elif "exclude" in act or "sterge" in act:
             self.view_obj.prezenti.discard(member)
             self.view_obj.absenti.discard(member)
             self.view_obj.intarzieri.discard(member)
+            
+            # Actualizează mesajul live instant
+            await self.view_obj.update_message_embed(interaction)
             await interaction.response.send_message(f"🗑️ Membrul {member.mention} a fost exclus din listă.", ephemeral=True)
         else:
             await interaction.response.send_message("❌ Acțiune invalidă! Scrie 'adauga' sau 'exclude'.", ephemeral=True)
@@ -543,6 +600,27 @@ class BuletinModal(discord.ui.Modal, title="🪪 Registru Buletin IC"):
         channel = discord.utils.get(interaction.guild.text_channels, name=LOG_BULETINE_SECRET_CHANNEL)
         if channel:
             await channel.send(embed=embed)
+
+# ==================== COMANDĂ NOUĂ: INFORMAȚII MEMBRI ====================
+
+@bot.tree.command(name="informatii_membri", description="📋 Afișează evidența completă a tuturor membrilor din mafie")
+@has_kara_hilal_perm()
+async def informatii_membri(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="📋 EVIDENȚĂ ÎNREGISTRARE & ACTIVITATE MEMBRI — KARA HILAL",
+        description="**Lista actualizată a membrilor mafiei Kara Hilal:**\n",
+        color=KH_BLUE,
+        timestamp=datetime.datetime.now()
+    )
+
+    text_membri = ""
+    for key, info in members_db.items():
+        up_str = f"{info['upuri']} up" if info['upuri'] > 0 else "nici un up"
+        text_membri += f"• **{info['nume']}** - intrat in mafie pe data de **{info['data_intrare']}**, **{info['activitati']}** activitati in total pe perioada asta, **{up_str}**, grad de **{info['grad']}**\n"
+
+    embed.add_field(name="👥 Membri Înregistrați", value=text_membri, inline=False)
+    embed.set_footer(text="Kara Hilal Management System • Sincronizat automat cu activitățile")
+    await interaction.response.send_message(embed=embed)
 
 # ==================== COMENZI PRINCIPALE ====================
 
@@ -940,6 +1018,7 @@ async def reset_pontaj(interaction: discord.Interaction, membru: discord.Member 
 @profil_pontaj.error
 @livrat.error
 @razie.error
+@informatii_membri.error
 async def perm_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
     if isinstance(error, app_commands.CheckFailure):
         await interaction.response.send_message("❌ Nu ai gradul necesar pentru a executa această comandă!", ephemeral=True)
