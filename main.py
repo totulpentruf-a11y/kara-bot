@@ -380,7 +380,7 @@ class InactivitateApprovalView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Aprobă", style=discord.ButtonStyle.success, emoji="✅", custom_id="inact_aprob_btn_v9")
+    @discord.ui.button(label="Aprobă", style=discord.ButtonStyle.success, emoji="✅", custom_id="inact_aprob_btn_v11")
     async def btn_aprob(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
         if not (check_super_admin(interaction.user) or any(r in user_roles for r in MOD_ROLES) or interaction.user.guild_permissions.administrator):
@@ -412,7 +412,7 @@ class InactivitateApprovalView(discord.ui.View):
         else:
             await interaction.response.send_message("✅ Cererea a fost aprobată! (Atenție: Membrul are DM-urile închise și nu a putut fi notificat în privat).", ephemeral=True)
 
-    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, emoji="❌", custom_id="inact_resping_btn_v9")
+    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, emoji="❌", custom_id="inact_resping_btn_v11")
     async def btn_respinge(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_roles = [role.name for role in interaction.user.roles]
         if not (check_super_admin(interaction.user) or any(r in user_roles for r in MOD_ROLES) or interaction.user.guild_permissions.administrator):
@@ -462,7 +462,6 @@ class ActivityView(discord.ui.View):
         embed.set_field_at(3, name=f"❌ Absenți ({len(self.absenti)})", value=abs_str, inline=True)
         embed.set_field_at(4, name=f"⏳ Întârzie ({len(self.intarzieri)})", value=int_str, inline=True)
         
-        # Editează mesajul existent pe loc (live update)
         try:
             await interaction.message.edit(embed=embed, view=self)
         except discord.HTTPException:
@@ -560,17 +559,15 @@ class ManageMemberModal(discord.ui.Modal, title="Gestionare Membru Activitate"):
                 m_data = register_or_get_member(member)
                 m_data["activitati"] += 1
             
-            # Actualizează mesajul live instant
-            await self.view_obj.update_message_embed(interaction)
             await interaction.response.send_message(f"✅ Membrul {member.mention} a fost adăugat la **Prezenți** și înregistrat în listă!", ephemeral=True)
+            await self.view_obj.update_message_embed(interaction)
         elif "exclude" in act or "sterge" in act:
             self.view_obj.prezenti.discard(member)
             self.view_obj.absenti.discard(member)
             self.view_obj.intarzieri.discard(member)
             
-            # Actualizează mesajul live instant
-            await self.view_obj.update_message_embed(interaction)
             await interaction.response.send_message(f"🗑️ Membrul {member.mention} a fost exclus din listă.", ephemeral=True)
+            await self.view_obj.update_message_embed(interaction)
         else:
             await interaction.response.send_message("❌ Acțiune invalidă! Scrie 'adauga' sau 'exclude'.", ephemeral=True)
 
@@ -601,14 +598,16 @@ class BuletinModal(discord.ui.Modal, title="🪪 Registru Buletin IC"):
         if channel:
             await channel.send(embed=embed)
 
-# ==================== COMANDĂ NOUĂ: INFORMAȚII MEMBRI ====================
+# ==================== COMANDĂ NOUĂ: INFORMAȚII MEMBRI (RESTRIȚIONAT LA MOD) ====================
 
 @bot.tree.command(name="informatii_membri", description="📋 Afișează evidența completă a tuturor membrilor din mafie")
-@has_kara_hilal_perm()
+@has_mod_perm()
 async def informatii_membri(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+
     embed = discord.Embed(
         title="📋 EVIDENȚĂ ÎNREGISTRARE & ACTIVITATE MEMBRI — KARA HILAL",
-        description="**Lista actualizată a membrilor mafiei Kara Hilal:**\n",
+        description="**Lista actualizată a membrilor mafiei Kara Hilal:**",
         color=KH_BLUE,
         timestamp=datetime.datetime.now()
     )
@@ -616,11 +615,18 @@ async def informatii_membri(interaction: discord.Interaction):
     text_membri = ""
     for key, info in members_db.items():
         up_str = f"{info['upuri']} up" if info['upuri'] > 0 else "nici un up"
-        text_membri += f"• **{info['nume']}** - intrat in mafie pe data de **{info['data_intrare']}**, **{info['activitati']}** activitati in total pe perioada asta, **{up_str}**, grad de **{info['grad']}**\n"
+        linie = f"• **{info['nume']}** - intrat in mafie pe data de **{info['data_intrare']}**, **{info['activitati']}** activitati in total pe perioada asta, **{up_str}**, grad de **{info['grad']}**\n"
+        
+        if len(text_membri) + len(linie) > 1000:
+            embed.add_field(name="👥 Membri Înregistrați (continuare)", value=text_membri, inline=False)
+            text_membri = ""
+        text_membri += linie
 
-    embed.add_field(name="👥 Membri Înregistrați", value=text_membri, inline=False)
+    if text_membri:
+        embed.add_field(name="👥 Membri Înregistrați", value=text_membri, inline=False)
+
     embed.set_footer(text="Kara Hilal Management System • Sincronizat automat cu activitățile")
-    await interaction.response.send_message(embed=embed)
+    await interaction.followup.send(embed=embed, ephemeral=True)
 
 # ==================== COMENZI PRINCIPALE ====================
 
